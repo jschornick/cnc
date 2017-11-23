@@ -1,0 +1,3 @@
+file debug.elf
+target remote :55000
+set breakpoint auto-hw

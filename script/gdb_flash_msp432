@@ -1,0 +1,6 @@
+file flash.elf
+target remote :55000
+load
+monitor reset
+detach
+quit
