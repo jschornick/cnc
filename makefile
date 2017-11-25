@@ -37,7 +37,7 @@ LD_FLAGS   += -Wl,-Map=$(NAME).map
 # If using functions/macros from TI's driverlib, we need to link the library
 #LD_FLAGS   += $(DRIVERLIB_DIR)/driverlib/MSP432P4xx/gcc/msp432p4xx_driverlib.a
 
-C_SOURCES = $(NAME).c uart.c system_msp432p401r.c startup_msp432p401r_gcc.c fifo.c spi.c
+C_SOURCES = $(NAME).c uart.c system_msp432p401r.c startup_msp432p401r_gcc.c fifo.c spi.c tmc.c
 OBJECTS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 BINARY    = $(NAME).elf
 
