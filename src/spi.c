@@ -147,8 +147,8 @@ void spi1_init(void)
 uint8_t spi1_send_byte(uint8_t tx_data)
 {
   uint8_t rx_data = 0;
-  uart_queue_str("SPI: Out:");
-  uart_queue_uint8(tx_data);
+  /* uart_queue_str("SPI: Out:"); */
+  /* uart_queue_uint8(tx_data); */
 
   while (!(EUSCI_B1->IFG & EUSCI_B_IFG_TXIFG));
   EUSCI_B1->TXBUF = tx_data;
@@ -156,9 +156,9 @@ uint8_t spi1_send_byte(uint8_t tx_data)
   while (!(EUSCI_B1->IFG & EUSCI_B_IFG_RXIFG));
   rx_data = EUSCI_B1->RXBUF;
 
-  uart_queue_str("  In:");
-  uart_queue_uint8(rx_data);
-  uart_queue_str("\r\n");
+  /* uart_queue_str("  In:"); */
+  /* uart_queue_uint8(rx_data); */
+  /* uart_queue_str("\r\n"); */
 
   return rx_data;
 }

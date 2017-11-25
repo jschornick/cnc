@@ -7,10 +7,10 @@
 // Version    : See GitHub repository jschornick/cnc for revision details
 
 #include <stdint.h>
-#include <stdio.h>  // sprintf
 #include "msp432p401r.h"
 #include "uart.h"
 #include "spi.h"
+#include "tmc.h"
 
 // MSP-EXP432 board layout
 //
@@ -142,47 +142,6 @@ volatile uint16_t adc_val = 0;   // adc reading, set in ADC ISR
 
 uint8_t RDSEL = RD_NONE;
 
-typedef struct {
-  uint32_t SG   : 1;
-  uint32_t OT   : 1;
-  uint32_t OTPW : 1;
-  uint32_t S2GA : 1;
-  uint32_t S2GB : 1;
-  uint32_t OLA  : 1;
-  uint32_t OLB  : 1;
-  uint32_t STST : 1;
-  uint32_t RESRVED8 : 2;
-  uint32_t MSTEP : 9;
-  uint32_t POL   : 1;
-} ustep_resp_t;
-
-typedef struct {
-  uint32_t SG   : 1;
-  uint32_t OT   : 1;
-  uint32_t OTPW : 1;
-  uint32_t S2GA : 1;
-  uint32_t S2GB : 1;
-  uint32_t OLA  : 1;
-  uint32_t OLB  : 1;
-  uint32_t STST : 1;
-  uint32_t RESRVED8 : 2;
-  uint32_t SG10 : 10;
-} sg_resp_t;
-
-typedef struct {
-  uint32_t SG   : 1;
-  uint32_t OT   : 1;
-  uint32_t OTPW : 1;
-  uint32_t S2GA : 1;
-  uint32_t S2GB : 1;
-  uint32_t OLA  : 1;
-  uint32_t OLB  : 1;
-  uint32_t STST : 1;
-  uint32_t RESRVED8 : 2;
-  uint32_t SE5 : 5;
-  uint32_t SG5 : 5;
-} sgcs_resp_t;
-
 //void decode_response(uint32_t data)
 void display_response(uint32_t ustep_data, uint32_t sg_data, uint32_t sgcs_data)
 {
@@ -191,7 +150,7 @@ void display_response(uint32_t ustep_data, uint32_t sg_data, uint32_t sgcs_data)
   sg_resp_t * sg_resp = (sg_resp_t *) &sg_data;
   sgcs_resp_t * sgcs_resp = (sgcs_resp_t *) &sgcs_data;
 
-  uart_queue_str("TMC response:\r\n");
+  uart_queue_str("\r\nTMC response:\r\n");
   uart_queue_str("-------------\r\n");
 
   uart_queue_str("Raw uStep : ");
@@ -254,12 +213,6 @@ typedef enum {
 
 Input_State_t input_state;
 
-#define DRVCONF 0xE0000
-#define DRVCONF_RDSEL_MASK  0x00030
-#define DRVCONF_RDSEL_USTEP 0x00000
-#define DRVCONF_RDSEL_SG    0x00010
-#define DRVCONF_RDSEL_SGCS  0x00020
-
 void do_menu(char c)
 {
   uint32_t resp_ustep;
@@ -267,22 +220,31 @@ void do_menu(char c)
   uint32_t resp_sgcs;
   switch(c) {
   case 'r':
-    uart_queue_str("Read");
-    spi1_send(DRVCONF|DRVCONF_RDSEL_USTEP);
-    resp_ustep = spi1_send(DRVCONF|DRVCONF_RDSEL_SG);
-    resp_sg = spi1_send(DRVCONF|DRVCONF_RDSEL_SGCS);
-    resp_sgcs = spi1_send(DRVCONF|DRVCONF_RDSEL_USTEP);
+    uart_queue_str("Read\r\n");
+    spi1_send(tmc_drvconf|DRVCONF_RDSEL_USTEP);
+    resp_ustep = spi1_send(tmc_drvconf|DRVCONF_RDSEL_SG);
+    resp_sg = spi1_send(tmc_drvconf|DRVCONF_RDSEL_SGCS);
+    resp_sgcs = spi1_send(tmc_drvconf|DRVCONF_RDSEL_USTEP);
     display_response(resp_ustep, resp_sg, resp_sgcs);
     break;
-  case 'w':
-    uart_queue_str("Write");
+  case 's':
+    uart_queue_str("Step\r\n");
+    P4->OUT ^= BIT3; // toggle to step
     break;
+  case 'w':
+    uart_queue_str("Write\r\n");
+    break;
+  case 'i':
+    uart_queue_str("Initalizing TMC\r\n");
+    tmc_init();
+    break;
+  default:
+    uart_queue(c);
   }
 }
 
 void process_char(char c)
 {
-  uart_queue(c);
   switch(input_state) {
     case INPUT_MENU:
       do_menu(c);
@@ -291,6 +253,7 @@ void process_char(char c)
       break;
   }
 }
+
 
 int main(void) {
 
@@ -310,7 +273,7 @@ int main(void) {
   //adc_init();
   //vref_init();
 
-  spi_init();
+  //spi_init();  // broken TX pin??
   spi1_init();
 
   __enable_irq();
@@ -323,23 +286,8 @@ int main(void) {
   uart_queue_str("| CNC Controller |\r\n");
   uart_queue_str("------------------\r\n\r\n");
 
-  // 0b 1001 0000 0001 1011 1000
-  // [19..17] = 100 : CHOPCONF
-  // [16..15] =  10  : TBL=10, blank time = 36 clock
-  // [14    ] =   0  : Standard (spreadcycle) mode
-  // [13    ] =   0  : Fixed chopper off time
-  // [12..11] =  00  : HDEC=0, decrement = 16 clocks
-  // [10.. 7] =0011  : HEND value
-  // [ 6.. 4] = 001  : HSTART value
-  // [ 3.. 0] =1000  : Off time
-  spi1_send(0x901B4);  // hysteresis mode
-  //display_response(spi_rx);
+  tmc_init();
 
-  spi1_send(0xE0000); // step/dir mode, read microstep
-  //display_response(spi_rx);
-  spi1_send(0x00008); // DRVCTRL: no step interpolation, rising edge step, full steps (90 degs)
-  //decode_response( spi1_send(0x00100) ); // DRVCTRL: no step interpolation, either edge steps, 256 steps
-  //decode_response( spi1_send(0x00200) ); // DRVCTRL: step interpolation, rising edge step, 256 steps
 
   S1_FLAG = 0;
   S2_FLAG = 0;
@@ -348,10 +296,11 @@ int main(void) {
 
   while(1) {
     if(S1_FLAG) {
-      uart_queue_str("\r\nB1: Read uStep!\r\n");
+      uart_queue_str("\r\nB1\r\n");
+      //uart_queue_str("\r\nB1: Read uStep!\r\n");
       //spi_rx = spi1_send(0x94557);
-      spi1_send(0xE0000); // low driver strength, read microstep pos, step mode
-      uart_queue_str("\r\n");
+      //spi1_send(0xE0000); // low driver strength, read microstep pos, step mode
+      //uart_queue_str("\r\n");
       //display_response(spi_rx);
       RDSEL = RD_USTEP;
       S1_FLAG=0;
