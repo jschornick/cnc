@@ -11,6 +11,9 @@
 #include "uart.h"
 #include "spi.h"
 #include "tmc.h"
+#include "gpio.h"
+
+
 
 // MSP-EXP432 board layout
 //
@@ -213,29 +216,69 @@ typedef enum {
 
 Input_State_t input_state;
 
+uint8_t tmc = 0;
+
 void do_menu(char c)
 {
   uint32_t resp_ustep;
   uint32_t resp_sg;
   uint32_t resp_sgcs;
+  uint32_t drvconf;
+  uint8_t i = 0;
   switch(c) {
+  case '0':
+    tmc = 0;
+    uart_queue_str("Stepper 0 selected.\r\n");
+    break;
+  case '1':
+    tmc = 1;
+    uart_queue_str("Stepper 1 selected.\r\n");
+    break;
+  case '2':
+    tmc = 2;
+    uart_queue_str("Stepper 2 selected.\r\n");
+    break;
+
   case 'r':
     uart_queue_str("Read\r\n");
-    spi1_send(tmc_drvconf|DRVCONF_RDSEL_USTEP);
-    resp_ustep = spi1_send(tmc_drvconf|DRVCONF_RDSEL_SG);
-    resp_sg = spi1_send(tmc_drvconf|DRVCONF_RDSEL_SGCS);
-    resp_sgcs = spi1_send(tmc_drvconf|DRVCONF_RDSEL_USTEP);
+    /* spi_send(tmc_drvconf|DRVCONF_RDSEL_USTEP); */
+    /* resp_ustep = spi_send(tmc_drvconf|DRVCONF_RDSEL_SG); */
+    /* resp_sg = spi_send(tmc_drvconf|DRVCONF_RDSEL_SGCS); */
+    /* resp_sgcs = spi_send(tmc_drvconf|DRVCONF_RDSEL_USTEP); */
+
+    drvconf = tmc_config[tmc].drvconf & ~DRVCONF_RDSEL_MASK;
+    tmc_send(tmc, drvconf | DRVCONF_RDSEL_USTEP);
+    resp_ustep = tmc_send(tmc, drvconf | DRVCONF_RDSEL_SG);
+    resp_sg = tmc_send(tmc, drvconf | DRVCONF_RDSEL_SGCS);
+    resp_sgcs = tmc_send(tmc, drvconf | DRVCONF_RDSEL_USTEP);
     display_response(resp_ustep, resp_sg, resp_sgcs);
     break;
   case 's':
     uart_queue_str("Step\r\n");
-    P4->OUT ^= BIT3; // toggle to step
+    gpio_toggle(tmc_pins[tmc].step_port, tmc_pins[tmc].step_pin);
     break;
-  case 'w':
-    uart_queue_str("Write\r\n");
+  case '<':
+    uart_queue_str("Direction <\r\n");
+    gpio_set_low(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    break;
+  case '>':
+    uart_queue_str("Direction >\r\n");
+    gpio_set_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    break;
+  case 'e':
+    for(i = 0; i < 3; i++) {
+      gpio_set_low(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+    }
+    uart_queue_str("All MOSFETs enabled\r\n");
+    break;
+  case 'd':
+    for(i = 0; i < 3; i++) {
+      gpio_set_high(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+    }
+    uart_queue_str("All MOSFETs disabled\r\n");
     break;
   case 'i':
-    uart_queue_str("Initalizing TMC\r\n");
+    uart_queue_str("Re-initalizing TMCs\r\n");
     tmc_init();
     break;
   default:
@@ -265,6 +308,11 @@ int main(void) {
   P1->OUT |= BIT0; // turn on immediately
 
   P4->DIR |= BIT3; // step pin
+  P4->DIR |= BIT4; // dir pin
+
+  P4->DIR |= BIT2; // MOSFET enable pin (active low)
+  P4->OUT |= BIT2; // set high, disable MOSFETS at start
+
 
   //timer_init();
   button_init();
@@ -273,8 +321,7 @@ int main(void) {
   //adc_init();
   //vref_init();
 
-  //spi_init();  // broken TX pin??
-  spi1_init();
+  spi_init();
 
   __enable_irq();
 
@@ -286,7 +333,9 @@ int main(void) {
   uart_queue_str("| CNC Controller |\r\n");
   uart_queue_str("------------------\r\n\r\n");
 
+  uart_queue_str("Initializing steppers... ");
   tmc_init();
+  uart_queue_str("done!\r\n");
 
 
   S1_FLAG = 0;
@@ -297,11 +346,6 @@ int main(void) {
   while(1) {
     if(S1_FLAG) {
       uart_queue_str("\r\nB1\r\n");
-      //uart_queue_str("\r\nB1: Read uStep!\r\n");
-      //spi_rx = spi1_send(0x94557);
-      //spi1_send(0xE0000); // low driver strength, read microstep pos, step mode
-      //uart_queue_str("\r\n");
-      //display_response(spi_rx);
       RDSEL = RD_USTEP;
       S1_FLAG=0;
     }

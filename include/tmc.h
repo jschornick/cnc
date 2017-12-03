@@ -10,6 +10,76 @@
 #define _TMC_H
 
 #include <stdint.h>
+#include "msp432p401r.h"
+#include "gpio.h"
+
+
+#define X_AXIS 0
+#define Y_AXIS 1
+#define Z_AXIS 2
+
+// TMC0 (X axis)
+#define TMC0_CS_PORT P7
+#define TMC0_CS_PIN  PIN2
+
+#define TMC0_EN_PORT P7
+#define TMC0_EN_PIN  PIN1
+
+#define TMC0_STEP_PORT P7
+#define TMC0_STEP_PIN  PIN0
+
+#define TMC0_DIR_PORT P9
+#define TMC0_DIR_PIN  PIN4
+
+// TMC1 (Y axis)
+#define TMC1_CS_PORT P7
+#define TMC1_CS_PIN  PIN5
+
+#define TMC1_EN_PORT P7
+#define TMC1_EN_PIN  PIN4
+
+#define TMC1_STEP_PORT P7
+#define TMC1_STEP_PIN  PIN7
+
+#define TMC1_DIR_PORT P7
+#define TMC1_DIR_PIN  PIN6
+
+// TMC2 (Z axis)
+#define TMC2_CS_PORT P3
+#define TMC2_CS_PIN  PIN5
+
+#define TMC2_EN_PORT P5
+#define TMC2_EN_PIN  PIN2
+
+#define TMC2_STEP_PORT P3
+#define TMC2_STEP_PIN  PIN7
+
+#define TMC2_DIR_PORT P3
+#define TMC2_DIR_PIN  PIN6
+
+
+typedef struct {
+  DIO_PORT_Odd_Interruptable_Type *cs_port;
+  uint8_t cs_pin;
+  DIO_PORT_Odd_Interruptable_Type *en_port;
+  uint8_t en_pin;
+  DIO_PORT_Odd_Interruptable_Type *step_port;
+  uint8_t step_pin;
+  DIO_PORT_Odd_Interruptable_Type *dir_port;
+  uint8_t dir_pin;
+} tmc_pinout_t;
+
+typedef struct {
+  uint32_t drvconf;
+  uint32_t drvctl;
+  uint32_t chopconf;
+  uint32_t sgcsconf;
+  uint32_t smarten;
+} tmc_config_t;
+
+
+extern tmc_config_t tmc_config[];
+extern tmc_pinout_t tmc_pins[];
 
 extern uint32_t tmc_drvconf;
 extern uint32_t tmc_drvctl;
@@ -27,6 +97,7 @@ extern uint32_t tmc_sgcsconf;
 #define DRVCONF_RDSEL_USTEP  0x00000
 #define DRVCONF_RDSEL_SG     0x00010
 #define DRVCONF_RDSEL_SGCS   0x00020
+#define DRVCONF_RDSEL_MASK   0x00030
 
 #define DRVCONF_VSENSE_305   0x00000
 #define DRVCONF_VSENSE_165   0x00040
@@ -67,7 +138,7 @@ extern uint32_t tmc_sgcsconf;
 #define DRVCTL_MRES_1    0x00008  /* full stepping */
 
 #define DRVCTL_DEDGE_RISE 0x00000
-#define DRVCTL_DEDGE_BOTH 0x00100
+#define DRVCTL_DEDGE_BOTH 0x00100  /* Do not use with INTPOL if step does not have 50% duty cycle! */
 
 #define DRVCTL_INTPOL_OFF 0x00000
 #define DRVCTL_INTPOL_ON  0x00200
@@ -150,5 +221,6 @@ typedef struct {
 } sgcs_resp_t;
 
 void tmc_init(void);
+uint32_t tmc_send(uint8_t tmc, uint32_t tx_data);
 
 #endif /* _TMC_H */

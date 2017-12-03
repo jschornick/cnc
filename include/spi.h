@@ -4,8 +4,14 @@
 // MSP432 SPI driver using interrupts and a pair of RX/TX buffers.
 // EUSCIB0 is connected SPI bus for the TMC stepper drivers
 //
+// SPI1:
+// P6.3 : SCLK
+// P6.4 : MOSI
+// P6.5 : MISO
+//
+// broken SPI0?
 // P1.5 : SCLK
-// P1.6 : MOSI
+// P1.6 : MOSI (no output)
 // P1.7 : MISO
 //
 // Compilation: GCC cross compiler for ARM, v4.9.3+
@@ -17,9 +23,6 @@
 #include <stdint.h>
 
 void spi_init(void);
-uint32_t spi_send(uint32_t);
-
-void spi1_init(void);
-uint32_t spi1_send(uint32_t);
+uint8_t spi_send_byte(uint8_t);
 
 #endif /* _SPI_H */
