@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name cnc)(type KiCad)(uri /home/jeff/cnc/git/schematic/cnc.pretty)(options "")(descr ""))
+)
