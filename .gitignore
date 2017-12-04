@@ -1,0 +1,7 @@
+BUILD/*.o
+*.bak
+*.bck
+*.map
+*.elf
+*.log
+.#*

@@ -14,9 +14,9 @@
 #include "gpio.h"
 
 
-#define X_AXIS 0
-#define Y_AXIS 1
-#define Z_AXIS 2
+#define X_AXIS 2  // 261
+#define Y_AXIS 0  // strong 262
+#define Z_AXIS 1  // weak 262
 
 // TMC0 (X axis)
 #define TMC0_CS_PORT P7
@@ -178,7 +178,6 @@ extern uint32_t tmc_sgcsconf;
 // SMARTEN:
 #define SMARTEN 0xA0000
 
-
 typedef struct {
   uint32_t SG   : 1;
   uint32_t OT   : 1;
@@ -222,5 +221,6 @@ typedef struct {
 
 void tmc_init(void);
 uint32_t tmc_send(uint8_t tmc, uint32_t tx_data);
+void tmc_reconfigure(uint8_t tmc, tmc_config_t *config);
 
 #endif /* _TMC_H */

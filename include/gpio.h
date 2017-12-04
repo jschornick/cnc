@@ -20,14 +20,29 @@
 #define PIN6 BIT6
 #define PIN7 BIT7
 
-void gpio_set_high(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+#define GPIO_PULL_DOWN  0
+#define GPIO_PULL_UP    1
+#define GPIO_PULL_OFF  0
+#define GPIO_PULL_ON   1
 
-void gpio_set_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+// interrupt edge select
+#define GPIO_RISING    0
+#define GPIO_FALLING   1
+
+void gpio_high(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+
+void gpio_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+
+void gpio_set(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t val);
 
 void gpio_toggle(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
 
 void gpio_set_input(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
 
 void gpio_set_output(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+
+void gpio_set_pullup(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t pull_dir);
+
+void gpio_set_interrupt(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t edge);
 
 #endif /* __GPIO_H */
