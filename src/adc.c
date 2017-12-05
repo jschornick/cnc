@@ -9,6 +9,9 @@
 #define ADC_MAX 0x3FFF  /* 14-bit mode */
 #define ADC_REF 3.3     /* AVCC = VCC = 3.3V */
 
+volatile uint8_t adc_flag = 0;   // adc complete flag, set in ADC ISR
+volatile uint16_t adc_val = 0;   // adc reading, set in ADC ISR
+
 // Function: adc_initializes
 //
 // Initializes the ADC in 14-bit single shot mode, reading from external pin A1.

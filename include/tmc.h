@@ -174,6 +174,7 @@ extern uint32_t tmc_sgcsconf;
 
 #define SGCSCONF_SGT(x) (x<<8)
 #define SGCSCONF_CS(x) x
+#define SGCSCONF_CS_MASK 0x1f
 
 // SMARTEN:
 #define SMARTEN 0xA0000
@@ -222,5 +223,7 @@ typedef struct {
 void tmc_init(void);
 uint32_t tmc_send(uint8_t tmc, uint32_t tx_data);
 void tmc_reconfigure(uint8_t tmc, tmc_config_t *config);
+
+uint8_t tmc_get_current_scale(uint8_t tmc);
 
 #endif /* _TMC_H */

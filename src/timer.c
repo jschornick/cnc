@@ -6,6 +6,8 @@
 // Compilation: GCC cross compiler for ARM, v4.9.3+
 // Version    : See GitHub repository jschornick/cnc for revision details
 
+volatile uint16_t heartbeat = 0; // pulsing heartbeat, updated by timer ISR
+
 // Function: timer_init
 //
 // Initializes two timers, one fast, one slow.

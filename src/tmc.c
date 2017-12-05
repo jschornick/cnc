@@ -135,3 +135,7 @@ uint32_t tmc_send(uint8_t tmc, uint32_t tx_data)
 
   return response;
 }
+
+uint8_t tmc_get_current_scale(uint8_t tmc) {
+  return (tmc_config[tmc].sgcsconf & SGCSCONF_CS_MASK);
+}

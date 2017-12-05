@@ -10,16 +10,6 @@
 #include "msp432p401r.h"
 #include "gpio.h"
 
-void gpio_high(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
-{
-  port->OUT |= pin_bits;
-}
-
-void gpio_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
-{
-  port->OUT &= ~pin_bits;
-}
-
 void gpio_set(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t val)
 {
   if (val) {
@@ -66,6 +56,4 @@ void gpio_set_interrupt(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits,
 
   port->IFG &= ~pin_bits; // clear flag
   port->IE |= pin_bits;   // interrupt enabled
-
-
 }

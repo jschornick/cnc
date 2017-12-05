@@ -29,9 +29,28 @@
 #define GPIO_RISING    0
 #define GPIO_FALLING   1
 
-void gpio_high(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+static inline uint8_t gpio_intr_flag(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
+{
+  return (port->IFG & pin_bits);
+}
 
-void gpio_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits);
+static inline void gpio_intr_clear(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
+{
+  port->IFG &= ~pin_bits;
+}
+
+
+static inline void gpio_high(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
+{
+  port->OUT |= pin_bits;
+}
+
+
+static inline void gpio_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
+{
+  port->OUT &= ~pin_bits;
+}
+
 
 void gpio_set(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t val);
 
