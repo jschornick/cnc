@@ -268,7 +268,7 @@ void display_config(uint8_t tmc)
   uart_queue_str("Driver Control (DRVCTL)   : ");
   uart_queue_hex(tmc_config[tmc].drvctl.raw, 20);
   uart_queue_str("\r\n");
-  uart_queue_str("  Step Resolution         : ");
+  uart_queue_str("  Step Resolution (8=full): ");
   uart_queue_hex(tmc_config[tmc].drvctl.MRES, 4);
   uart_queue_str("\r\n");
   uart_queue_str("  Step edge (1=BOTH)      : ");
@@ -286,6 +286,9 @@ void display_config(uint8_t tmc)
   uart_queue_str("\r\n");
   uart_queue_str("  Decay time (0=freewheel): ");
   uart_queue_hex(tmc_config[tmc].chopconf.TOFF, 4);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Blank time              : ");
+  uart_queue_hex(tmc_config[tmc].chopconf.TBL, 2);
   uart_queue_str("\r\n\r\n");
 
   uart_queue_str("StallGuard (SGCSCONF)     : ");

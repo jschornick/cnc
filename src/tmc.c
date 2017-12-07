@@ -41,12 +41,15 @@ tmc_pinout_t tmc_pins[3] = {
                      | DRVCTL_INTPOL_OFF )
 
 #define chopconf_init ( CHOPCONF                \
-                        | CHOPCONF_CHM_CONST    \
+                        | CHOPCONF_CHM_SPREAD   \
                         | CHOPCONF_TBL_24       \
                         | CHOPCONF_TOFF(8) )
 
-#define sgcsconf_init (SGCSCONF)
-uint8_t cscale_init[] =  { 0x6, 0x4, 0xe };
+#define sgcsconf_init (SGCSCONF                 \
+                       | SGCSCONF_SFILT_ON )
+
+//uint8_t cscale_init[] =  { 0x6, 0x4, 0xe };
+uint8_t cscale_init[] =  { 0x6, 0x2, 0xe };
 
 #define smarten_init (SMARTEN)
 

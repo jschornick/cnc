@@ -165,8 +165,8 @@ typedef union {
 #define TMC_CHOP_TBL_36 0x2
 #define TMC_CHOP_TBL_54 0x3
 
-#define TMC_CHOP_STD   0x0  /* standard (spreadCycle) mode */
-#define TMC_CHOP_CONST 0x1  /* constant t_off w/fast decay */
+#define TMC_CHOP_SPREAD  0x0  /* standard (spreadCycle) mode */
+#define TMC_CHOP_CONST   0x1  /* constant t_off w/fast decay */
 
 #define TMC_CHOP_FIXED_TOFF 0x0
 #define TMC_CHOP_RAND_TOFF  0x1
@@ -380,8 +380,8 @@ typedef union {
 #define CHOPCONF_TBL_36 0x10000
 #define CHOPCONF_TBL_54 0x18000
 
-#define CHOPCONF_CHM_STD   0x00000
-#define CHOPCONF_CHM_CONST 0x04000
+#define CHOPCONF_CHM_SPREAD 0x00000
+#define CHOPCONF_CHM_CONST  0x04000
 
 #define CHOPCONF_RNDTF_FIXED 0x00000
 #define CHOPCONF_RNDTF_RAND  0x02000
