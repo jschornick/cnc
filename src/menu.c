@@ -22,9 +22,7 @@ void (*input_callback)(uint32_t);
 
 void update_current_scale(uint32_t val) {
   if (val <= 0x1f) {
-    tmc_config[tmc].sgcsconf &= ~SGCSCONF_CS_MASK;
-    tmc_config[tmc].sgcsconf |= val;
-    tmc_reconfigure(tmc, &tmc_config[tmc]);
+    tmc_set_current_scale(tmc, val);
     uart_queue_str("Config updated!\r\n");
   } else {
     uart_queue_str("Value ");
@@ -34,67 +32,101 @@ void update_current_scale(uint32_t val) {
   }
 }
 
-//void decode_response(uint32_t data)
-void display_response(uint32_t ustep_data, uint32_t sg_data, uint32_t sgcs_data)
+void update_microstep(uint32_t val) {
+  if (val <= 0x08) {
+    tmc_set_microstep(tmc, val);
+    uart_queue_str("Config updated!\r\n");
+  } else {
+    uart_queue_str("Value ");
+    uart_queue_hex(val, 32);
+    uart_queue_str("\r\n");
+    uart_queue_str("Out of range!\r\n");
+  }
+}
+
+
+void display_tmc_status(void)
 {
 
-  ustep_resp_t * ustep_resp = (ustep_resp_t *) &ustep_data;
-  sg_resp_t * sg_resp = (sg_resp_t *) &sg_data;
-  sgcs_resp_t * sgcs_resp = (sgcs_resp_t *) &sgcs_data;
+  uint32_t resp_ustep;
+  uint32_t resp_sg;
+  uint32_t resp_sgcs;
+
+  tmc_response_t *resp;
+
+  //uint32_t drvconf;
+  drvconf_t drvconf;
+
+  drvconf = tmc_config[tmc].drvconf;
+  // NB: setting changes aren't reflected until *next* response, so first write just sets read mode
+  drvconf.RDSEL = TMC_RDSEL_USTEP;
+  tmc_send(tmc, drvconf.raw);
+
+  drvconf.RDSEL = TMC_RDSEL_SG;
+  resp_ustep = tmc_send(tmc, drvconf.raw);
+
+  drvconf.RDSEL = TMC_RDSEL_SGCS;
+  resp_sg = tmc_send(tmc, drvconf.raw);
+
+  drvconf.RDSEL = TMC_RDSEL_USTEP;
+  resp_sgcs = tmc_send(tmc, drvconf.raw);
 
   uart_queue_str("\r\nTMC response:\r\n");
   uart_queue_str("-------------\r\n");
 
   uart_queue_str("Raw uStep : ");
-  uart_queue_hex(ustep_data, 20);
+  uart_queue_hex(resp_ustep, 20);
   uart_queue_str("\r\n");
   uart_queue_str("Raw SG    : ");
-  uart_queue_hex(sg_data, 20);
+  uart_queue_hex(resp_sg, 20);
   uart_queue_str("\r\n");
   uart_queue_str("Raw SGCS  : ");
-  uart_queue_hex(sgcs_data, 20);
+  uart_queue_hex(resp_sgcs, 20);
   uart_queue_str("\r\n");
 
+  resp = (tmc_response_t *) &resp_ustep;
   uart_queue_str("(00) StallGuard status   : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->SG) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.SG) );
   uart_queue_str("\r\n");
   uart_queue_str("(01) Over temp shutdown  : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->OT) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.OT) );
   uart_queue_str("\r\n");
   uart_queue_str("(02) Over temp warning   : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->OTPW) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.OTPW) );
   uart_queue_str("\r\n");
   uart_queue_str("(03) Short to ground (A) : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->S2GA) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.S2GA) );
   uart_queue_str("\r\n");
   uart_queue_str("(04) Short to ground (B) : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->S2GB) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.S2GB) );
   uart_queue_str("\r\n");
   uart_queue_str("(05) Open load (A)       : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->OLA) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.OLA) );
   uart_queue_str("\r\n");
   uart_queue_str("(06) Open load (B)       : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->OLB) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.OLB) );
   uart_queue_str("\r\n");
   uart_queue_str("(07) Standstill          : ");
-  uart_queue(NIBBLE_TO_ASCII((uint8_t) ustep_resp->STST) );
+  uart_queue(NIBBLE_TO_ASCII((uint8_t) resp->ustep.STST) );
   uart_queue_str("\r\n");
 
   uart_queue_str("     MSTEP               : ");
-  if(ustep_resp->POL) {
+  if(resp->ustep.POL) {
     uart_queue('+');
   } else {
     uart_queue('-');
   }
-  uart_queue_hex(ustep_resp->MSTEP, 9);
+  uart_queue_hex(resp->ustep.MSTEP, 9);
   uart_queue_str("\r\n");
 
+  resp = (tmc_response_t *) &resp_sg;
   uart_queue_str("     SG2                 : ");
-  uart_queue_hex(sg_resp->SG10, 10);
+  uart_queue_hex(resp->sg.SG10, 10);
   uart_queue_str("\r\n");
 
+  resp = (tmc_response_t *) &resp_sgcs;
   uart_queue_str("     CS                  : ");
-  uart_queue_hex(sgcs_resp->SE5, 5);
+  uart_queue_hex(resp->sgcs.SE5, 5);
   uart_queue_str("\r\n");
 }
 
@@ -124,11 +156,6 @@ void display_config_menu(uint8_t mode) {
 
 void main_menu(char c)
 {
-  uint32_t resp_ustep;
-  uint32_t resp_sg;
-  uint32_t resp_sgcs;
-
-  uint32_t drvconf;
   uint8_t i = 0;
 
   uint8_t show_menu = 1;
@@ -149,12 +176,7 @@ void main_menu(char c)
 
   case 'r':
     uart_queue_str("Read TMC\r\n");
-    drvconf = tmc_config[tmc].drvconf & ~DRVCONF_RDSEL_MASK;
-    tmc_send(tmc, drvconf | DRVCONF_RDSEL_USTEP);
-    resp_ustep = tmc_send(tmc, drvconf | DRVCONF_RDSEL_SG);
-    resp_sg = tmc_send(tmc, drvconf | DRVCONF_RDSEL_SGCS);
-    resp_sgcs = tmc_send(tmc, drvconf | DRVCONF_RDSEL_USTEP);
-    display_response(resp_ustep, resp_sg, resp_sgcs);
+    display_tmc_status();
     break;
   case 's':
     uart_queue_str("Step\r\n");
@@ -216,6 +238,12 @@ void main_menu(char c)
   }
 }
 
+void display_config(uint8_t tmc)
+{
+  uart_queue_str("Configuration for stepper #");
+  uart_queue_hex(tmc, 4);
+  uart_queue_str("\r\n");
+}
 
 void config_menu(char c)
 {
@@ -245,9 +273,17 @@ void config_menu(char c)
       break;
     case 's':
       uart_queue_str("Adjust microstepping\r\n");
+      uart_queue_str("Current step resolution: 0x");
+      uart_queue_hex(tmc_get_microstep(tmc), 4);
+      uart_queue_str("\r\nNew resolution (0x0 - 0x8)? ");
+      input_value = 0;
+      input_state = INPUT_HEX;
+      input_callback = update_microstep;
+      show_menu = 0;
       break;
     case 'l':
       uart_queue_str("List configuration\r\n");
+      display_config(tmc);
       break;
     case 'm':
       uart_queue_str("Return to main\r\n");
