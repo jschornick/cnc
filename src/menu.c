@@ -242,7 +242,71 @@ void display_config(uint8_t tmc)
 {
   uart_queue_str("Configuration for stepper #");
   uart_queue_hex(tmc, 4);
+  uart_queue_str("\r\n\r\n");
+  uart_queue_str("Driver Config (DRVCONF)   : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.raw, 20);
   uart_queue_str("\r\n");
+  uart_queue_str("  Voltage sense           : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.VSENSE, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step Interface  (0=EN)  : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SDOFF, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Slope control (low)     : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SLPL, 2);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Slope control (high)    : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SLPH, 2);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Short-to-ground (0=EN)  : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.DISS2G, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  S2G Time                : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.TS2G, 2);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("Driver Control (DRVCTL)   : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step Resolution         : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.MRES, 4);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step edge (1=BOTH)      : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.DEDGE, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step interpolate (1=ON) : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.INTPOL, 1);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("Chopper Config (CHOPCONF) : ");
+  uart_queue_hex(tmc_config[tmc].chopconf.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Mode (0=spread, 1=const): ");
+  uart_queue_hex(tmc_config[tmc].chopconf.CHM, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Decay time (0=freewheel): ");
+  uart_queue_hex(tmc_config[tmc].chopconf.TOFF, 4);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("StallGuard (SGCSCONF)     : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Current scaling         : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.CSCALE, 5);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Threshold (7-bit signed): ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.SGT, 7);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Filtering (1=ON)        : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.SFILT, 1);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("CoolStep (SMARTEN)        : ");
+  uart_queue_hex(tmc_config[tmc].smarten.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Minimum (0=disabled)    : ");
+  uart_queue_hex(tmc_config[tmc].smarten.SEMIN, 4);
+  uart_queue_str("\r\n\r\n");
 }
 
 void config_menu(char c)

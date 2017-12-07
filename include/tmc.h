@@ -84,8 +84,8 @@ extern tmc_pinout_t tmc_pins[];
 #define TMC_RDSEL_SG     0x1
 #define TMC_RDSEL_SGCS   0x2
 
-#define TMC_VSENSE_305  0x0
-#define TMC_VSENSE_165  0x1
+#define TMC_VSENSE_LOW  0x0  /* Peak sense input: 290 - 330mV */
+#define TMC_VSENSE_HIGH 0x1  /*                   153 - 180mV */
 
 #define TMC_SD_ON     0x0  /* step/dir interface enabled */
 #define TMC_SD_OFF    0x1
@@ -160,7 +160,7 @@ typedef union {
 //
 // Chopper configuration
 
-#define TMC_CHOP_TBL_16 0x0  /* Blanking time, 16 clocks */
+#define TMC_CHOP_TBL_16 0x0  /* Blanking (sense ignore after switch) during, 16 clocks */
 #define TMC_CHOP_TBL_24 0x1
 #define TMC_CHOP_TBL_36 0x2
 #define TMC_CHOP_TBL_54 0x3
@@ -190,6 +190,10 @@ typedef union {
 // SGCSCONF register, structure definition
 //
 // StallGuard2 configuration
+//
+// Current scaling:
+//   R_sense = 0.07 Ohms
+//   I_rms = (CSCALE+1)/32 * (V_FS/R_sense) * 1/sqrt(2)
 
 #define TMC_SFILT_OFF 0x0
 #define TMC_SFILT_ON  0x1
@@ -322,8 +326,8 @@ typedef union {
 #define DRVCONF_RDSEL_SGCS   0x00020
 #define DRVCONF_RDSEL_MASK   0x00030
 
-#define DRVCONF_VSENSE_305   0x00000
-#define DRVCONF_VSENSE_165   0x00040
+#define DRVCONF_VSENSE_LOW   0x00000
+#define DRVCONF_VSENSE_HIGH  0x00040
 
 #define DRVCONF_SDOFF_STEP   0x00000
 #define DRVCONF_SDOFF_NOSTEP 0x00080

@@ -32,7 +32,7 @@ tmc_pinout_t tmc_pins[3] = {
 };
 
 #define drvconf_init (DRVCONF                   \
-                      | DRVCONF_VSENSE_305      \
+                      | DRVCONF_VSENSE_LOW      \
                       | DRVCONF_SDOFF_STEP )
 
 #define drvctl_init (DRVCTL                     \
@@ -42,13 +42,11 @@ tmc_pinout_t tmc_pins[3] = {
 
 #define chopconf_init ( CHOPCONF                \
                         | CHOPCONF_CHM_CONST    \
+                        | CHOPCONF_TBL_24       \
                         | CHOPCONF_TOFF(8) )
 
-// sense: 0.07 Ohms
-// I_rms = (CS+1)/32 * (V_FS/R_sense) * 1/sqrt(2)
-#define sgcsconf_init ( SGCSCONF                \
-                        | SGCSCONF_CS(5) )
-//| SGCSCONF_CS(15);
+#define sgcsconf_init (SGCSCONF)
+uint8_t cscale_init[] =  { 0x6, 0x4, 0xe };
 
 #define smarten_init (SMARTEN)
 
@@ -83,6 +81,7 @@ void tmc_init(void)
   config.smarten.raw = smarten_init;
 
   for(i=0; i<3; i++) {
+    config.sgcsconf.CSCALE = cscale_init[i];
     tmc_reconfigure(i, &config);
   }
 }

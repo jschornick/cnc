@@ -71,7 +71,7 @@ int main(void) {
       B2_flag=0;
     }
 
-    // Pop received characters off the FIFO and echo back
+    // Pop received characters off the FIFO and process them
     while(rx_fifo.count) {
       fifo_pop(&rx_fifo, &new_char);
       process_input(new_char);
