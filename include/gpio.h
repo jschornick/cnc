@@ -51,6 +51,11 @@ static inline void gpio_low(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_b
   port->OUT &= ~pin_bits;
 }
 
+static inline uint8_t gpio_get_output(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
+{
+  return (port->OUT & pin_bits);
+}
+
 
 void gpio_set(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t val);
 

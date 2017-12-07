@@ -136,6 +136,28 @@ void uart_queue_hex(uint32_t val, uint8_t bits)
   uart_prime_tx();
 }
 
+void uart_queue_dec(uint32_t val) {
+  char buf[11];  // max uint_32 is 10 digits
+  uint8_t i = 10;
+
+  buf[i] = '\0';
+  do {
+    i--;
+    buf[i] = '0' + (val % 10);
+    val /= 10;
+  } while (val != 0);
+  uart_queue_str(&buf[i]);
+}
+
+void uart_queue_sdec(int32_t val) {
+
+  if (val < 0) {
+    uart_queue('-');
+    uart_queue_dec(-val);
+  } else {
+    uart_queue_dec(val);
+  }
+}
 
 void EUSCIA0_IRQHandler(void)
 {

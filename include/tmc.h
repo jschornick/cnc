@@ -15,13 +15,12 @@
 
 #define TMC_CLK  15000000L   /* 15MHz internal clock */
 
-// X-axis: carriage (along gantry)
-// Y-axis: gantry
-// Z-axis: up/down
+#define TMC_POLARITY_NORMAL 1
+#define TMC_POLARITY_INVERT 0
+extern uint8_t tmc_axis_conf[];
 
-#define X_AXIS 2  // 261
-#define Y_AXIS 0  // strong 262
-#define Z_AXIS 1  // weak 262
+#define TMC_FWD 1
+#define TMC_REV 0
 
 // TMC0 (X axis)
 #define TMC0_CS_PORT P7
@@ -420,5 +419,8 @@ void tmc_set_current_scale(uint8_t tmc, uint32_t value);
 
 uint8_t tmc_get_microstep(uint8_t tmc);
 void tmc_set_microstep(uint8_t tmc, uint32_t value);
+
+void tmc_set_dir(uint8_t tmc, uint8_t dir);
+int8_t tmc_get_dir(uint8_t tmc);
 
 #endif /* _TMC_H */

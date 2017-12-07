@@ -23,7 +23,8 @@ typedef enum {
 
 typedef enum {
   MENU_MAIN = 0,
-  MENU_CONFIG
+  MENU_CONFIG,
+  MENU_MOTION
 } Menu_State_t;
 
 extern Input_State_t input_state;

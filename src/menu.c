@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include "uart.h"
 #include "tmc.h"
+#include "motion.h"
 #include "menu.h"
 
 // The selected stepper controller
@@ -17,6 +18,14 @@ uint8_t tmc = 0;
 Input_State_t input_state;
 Menu_State_t menu_state;
 uint32_t input_value;
+
+uint32_t code_step = 0;
+uint32_t code[][3] = { {-200, 200, 0},
+                       {200, 200, 0},
+                       {200, -200, 0},
+                       {-200, -200, 0},
+                       {-200, 200, 0},
+                       {200, -200}};
 
 void (*input_callback)(uint32_t);
 
@@ -44,6 +53,80 @@ void update_microstep(uint32_t val) {
   }
 }
 
+
+void display_config(uint8_t tmc)
+{
+  uart_queue_str("Configuration for stepper #");
+  uart_queue_hex(tmc, 4);
+  uart_queue_str("\r\n\r\n");
+  uart_queue_str("Driver Config (DRVCONF)   : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Voltage sense           : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.VSENSE, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step Interface  (0=EN)  : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SDOFF, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Slope control (low)     : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SLPL, 2);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Slope control (high)    : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.SLPH, 2);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Short-to-ground (0=EN)  : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.DISS2G, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  S2G Time                : ");
+  uart_queue_hex(tmc_config[tmc].drvconf.TS2G, 2);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("Driver Control (DRVCTL)   : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step Resolution (8=full): ");
+  uart_queue_hex(tmc_config[tmc].drvctl.MRES, 4);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step edge (1=BOTH)      : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.DEDGE, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Step interpolate (1=ON) : ");
+  uart_queue_hex(tmc_config[tmc].drvctl.INTPOL, 1);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("Chopper Config (CHOPCONF) : ");
+  uart_queue_hex(tmc_config[tmc].chopconf.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Mode (0=spread, 1=const): ");
+  uart_queue_hex(tmc_config[tmc].chopconf.CHM, 1);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Decay time (0=freewheel): ");
+  uart_queue_hex(tmc_config[tmc].chopconf.TOFF, 4);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Blank time              : ");
+  uart_queue_hex(tmc_config[tmc].chopconf.TBL, 2);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("StallGuard (SGCSCONF)     : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Current scaling         : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.CSCALE, 5);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Threshold (7-bit signed): ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.SGT, 7);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Filtering (1=ON)        : ");
+  uart_queue_hex(tmc_config[tmc].sgcsconf.SFILT, 1);
+  uart_queue_str("\r\n\r\n");
+
+  uart_queue_str("CoolStep (SMARTEN)        : ");
+  uart_queue_hex(tmc_config[tmc].smarten.raw, 20);
+  uart_queue_str("\r\n");
+  uart_queue_str("  Minimum (0=disabled)    : ");
+  uart_queue_hex(tmc_config[tmc].smarten.SEMIN, 4);
+  uart_queue_str("\r\n\r\n");
+}
 
 void display_tmc_status(void)
 {
@@ -154,164 +237,6 @@ void display_config_menu(uint8_t mode) {
   uart_queue_str("] > ");
 }
 
-void main_menu(char c)
-{
-  uint8_t i = 0;
-
-  uint8_t show_menu = 1;
-
-  switch(c) {
-  case '0':
-    tmc = 0;
-    uart_queue_str("Stepper 0 selected.\r\n");
-    break;
-  case '1':
-    tmc = 1;
-    uart_queue_str("Stepper 1 selected.\r\n");
-    break;
-  case '2':
-    tmc = 2;
-    uart_queue_str("Stepper 2 selected.\r\n");
-    break;
-
-  case 'r':
-    uart_queue_str("Read TMC\r\n");
-    display_tmc_status();
-    break;
-  case 's':
-    uart_queue_str("Step\r\n");
-    gpio_toggle(tmc_pins[tmc].step_port, tmc_pins[tmc].step_pin);
-    break;
-  case 'S':
-    uart_queue_str("Step All\r\n");
-    gpio_toggle(tmc_pins[0].step_port, tmc_pins[0].step_pin);
-    gpio_toggle(tmc_pins[1].step_port, tmc_pins[1].step_pin);
-    gpio_toggle(tmc_pins[2].step_port, tmc_pins[2].step_pin);
-    break;
-  case '<':
-    uart_queue_str("Direction <<--\r\n");
-    gpio_low(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
-    break;
-  case '>':
-    uart_queue_str("Direction -->>\r\n");
-    gpio_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
-    break;
-  case 'e':
-    gpio_low(tmc_pins[tmc].en_port, tmc_pins[tmc].en_pin);
-    uart_queue_str("MOSFETs enabled\r\n");
-    break;
-  case 'E':
-    for(i = 0; i < 3; i++) {
-      gpio_low(tmc_pins[i].en_port, tmc_pins[i].en_pin);
-    }
-    uart_queue_str("All MOSFETs enabled\r\n");
-    break;
-  case 'd':
-    gpio_high(tmc_pins[tmc].en_port, tmc_pins[tmc].en_pin);
-    uart_queue_str("MOSFETs disabled\r\n");
-    break;
-  case 'D':
-    for(i = 0; i < 3; i++) {
-      gpio_high(tmc_pins[i].en_port, tmc_pins[i].en_pin);
-    }
-    uart_queue_str("All MOSFETs disabled\r\n");
-    break;
-  case 'i':
-    uart_queue_str("Re-initalizing TMCs\r\n");
-    tmc_init();
-    break;
-  case 'c':
-    display_config_menu(2);
-    menu_state = MENU_CONFIG;
-    show_menu = 0;
-    break;
-  case '?':
-    show_menu = 2;
-    break;
-  default:
-    show_menu = 0;
-    break;
-  }
-
-  if (show_menu) {
-    display_main_menu(show_menu);
-  }
-}
-
-void display_config(uint8_t tmc)
-{
-  uart_queue_str("Configuration for stepper #");
-  uart_queue_hex(tmc, 4);
-  uart_queue_str("\r\n\r\n");
-  uart_queue_str("Driver Config (DRVCONF)   : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.raw, 20);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Voltage sense           : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.VSENSE, 1);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Step Interface  (0=EN)  : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.SDOFF, 1);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Slope control (low)     : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.SLPL, 2);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Slope control (high)    : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.SLPH, 2);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Short-to-ground (0=EN)  : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.DISS2G, 1);
-  uart_queue_str("\r\n");
-  uart_queue_str("  S2G Time                : ");
-  uart_queue_hex(tmc_config[tmc].drvconf.TS2G, 2);
-  uart_queue_str("\r\n\r\n");
-
-  uart_queue_str("Driver Control (DRVCTL)   : ");
-  uart_queue_hex(tmc_config[tmc].drvctl.raw, 20);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Step Resolution (8=full): ");
-  uart_queue_hex(tmc_config[tmc].drvctl.MRES, 4);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Step edge (1=BOTH)      : ");
-  uart_queue_hex(tmc_config[tmc].drvctl.DEDGE, 1);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Step interpolate (1=ON) : ");
-  uart_queue_hex(tmc_config[tmc].drvctl.INTPOL, 1);
-  uart_queue_str("\r\n\r\n");
-
-  uart_queue_str("Chopper Config (CHOPCONF) : ");
-  uart_queue_hex(tmc_config[tmc].chopconf.raw, 20);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Mode (0=spread, 1=const): ");
-  uart_queue_hex(tmc_config[tmc].chopconf.CHM, 1);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Decay time (0=freewheel): ");
-  uart_queue_hex(tmc_config[tmc].chopconf.TOFF, 4);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Blank time              : ");
-  uart_queue_hex(tmc_config[tmc].chopconf.TBL, 2);
-  uart_queue_str("\r\n\r\n");
-
-  uart_queue_str("StallGuard (SGCSCONF)     : ");
-  uart_queue_hex(tmc_config[tmc].sgcsconf.raw, 20);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Current scaling         : ");
-  uart_queue_hex(tmc_config[tmc].sgcsconf.CSCALE, 5);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Threshold (7-bit signed): ");
-  uart_queue_hex(tmc_config[tmc].sgcsconf.SGT, 7);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Filtering (1=ON)        : ");
-  uart_queue_hex(tmc_config[tmc].sgcsconf.SFILT, 1);
-  uart_queue_str("\r\n\r\n");
-
-  uart_queue_str("CoolStep (SMARTEN)        : ");
-  uart_queue_hex(tmc_config[tmc].smarten.raw, 20);
-  uart_queue_str("\r\n");
-  uart_queue_str("  Minimum (0=disabled)    : ");
-  uart_queue_hex(tmc_config[tmc].smarten.SEMIN, 4);
-  uart_queue_str("\r\n\r\n");
-}
-
 void config_menu(char c)
 {
   uint8_t show_menu = 1;
@@ -371,8 +296,129 @@ void config_menu(char c)
   }
 }
 
+void display_motion_menu(uint8_t mode) {
+  if (mode == 2) {
+    uart_queue_str("\r\n\r\n");
+    uart_queue_str("Motion menu\r\n");
+    uart_queue_str("-----------\r\n");
+  }
+  uart_queue_str("Motion [");
+  uart_queue_hex(tmc, 4);
+  uart_queue_str("] (");
+  uart_queue_sdec(pos[X_AXIS]);
+  uart_queue_str(", ");
+  uart_queue_sdec(pos[Y_AXIS]);
+  uart_queue_str(", ");
+  uart_queue_sdec(pos[Z_AXIS]);
+  uart_queue_str(") > ");
+}
 
-void update_dec(char c)
+void motion_menu(char c)
+{
+  uint8_t show_menu = 1;
+  switch(c) {
+    case '0':
+      tmc = 0;
+      uart_queue_str("Stepper 0 selected.\r\n");
+      break;
+    case '1':
+      tmc = 1;
+      uart_queue_str("Stepper 1 selected.\r\n");
+      break;
+    case '2':
+      tmc = 2;
+      uart_queue_str("Stepper 2 selected.\r\n");
+      break;
+    case 's':
+      uart_queue_str("Step ");
+      gpio_toggle(tmc_pins[tmc].step_port, tmc_pins[tmc].step_pin);
+      if( tmc_get_dir(tmc) == TMC_FWD ) {
+        uart_queue_str("++\r\n");
+        pos[tmc]++;
+      } else {
+        pos[tmc]--;
+        uart_queue_str("--\r\n");
+      }
+      break;
+    case 'S':
+      uart_queue_str("Step All\r\n");
+      gpio_toggle(tmc_pins[0].step_port, tmc_pins[0].step_pin);
+      gpio_toggle(tmc_pins[1].step_port, tmc_pins[1].step_pin);
+      gpio_toggle(tmc_pins[2].step_port, tmc_pins[2].step_pin);
+      break;
+    case '<':
+      uart_queue_str("Direction: --\r\n");
+      gpio_low(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+      break;
+    case '>':
+      uart_queue_str("Direction: ++\r\n");
+      gpio_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+      break;
+    case 'x':
+      uart_queue_str("X rapid\r\n");
+      uart_queue_str("Number of steps ? ");
+      input_value = 0;
+      input_state = INPUT_DEC;
+      input_callback = rapid_x;
+      show_menu = 0;
+      break;
+    case 'y':
+      uart_queue_str("Y rapid\r\n");
+      uart_queue_str("Number of steps ? ");
+      input_value = 0;
+      input_state = INPUT_DEC;
+      input_callback = rapid_y;
+      show_menu = 0;
+      break;
+    case 'z':
+      uart_queue_str("Z rapid\r\n");
+      uart_queue_str("Number of steps ? ");
+      input_value = 0;
+      input_state = INPUT_DEC;
+      input_callback = rapid_z;
+      show_menu = 0;
+      break;
+    case 'r':
+      uart_queue_str("Rapid step speed (0-1000) ? ");
+      input_value = 0;
+      input_state = INPUT_DEC;
+      input_callback = rapid_speed;
+      show_menu = 0;
+      break;
+    case 'h':
+      uart_queue_str("Return home\r\n");
+      home();
+      break;
+    case 'c':
+      uart_queue_str("Execute code\r\n");
+      uart_queue_str("Step # ");
+      uart_queue_dec(code_step);
+      uart_queue_str("\r\n");
+      goto_pos(code[code_step][0], code[code_step][1], code[code_step][2]);
+      code_step++;
+      code_step %= 6;
+      break;
+    case 'm':
+      uart_queue_str("Return to main\r\n");
+      menu_state = MENU_MAIN;
+      show_menu = 0;
+      display_main_menu(2);
+      break;
+    case '?':
+      uart_queue_str("\r\n");
+      show_menu = 2;
+      break;
+    default:
+      show_menu = 0;
+      break;
+  }
+  if (show_menu) {
+    display_motion_menu(show_menu);
+  }
+}
+
+
+void read_dec(char c)
 {
   if( (c >= '0') && (c <= '9') ) {
     uart_queue(c);
@@ -380,7 +426,7 @@ void update_dec(char c)
   }
 }
 
-void update_hex(char c)
+void read_hex(char c)
 {
   if( (c >= '0') && (c <= '9') ) {
     uart_queue(c);
@@ -391,6 +437,79 @@ void update_hex(char c)
     input_value = (input_value * 16) + (c - 'a' + 10);
   }
 }
+
+void main_menu(char c)
+{
+  uint8_t i = 0;
+
+  uint8_t show_menu = 1;
+
+  switch(c) {
+  case '0':
+    tmc = 0;
+    uart_queue_str("Stepper 0 selected.\r\n");
+    break;
+  case '1':
+    tmc = 1;
+    uart_queue_str("Stepper 1 selected.\r\n");
+    break;
+  case '2':
+    tmc = 2;
+    uart_queue_str("Stepper 2 selected.\r\n");
+    break;
+
+  case 'r':
+    uart_queue_str("Read TMC\r\n");
+    display_tmc_status();
+    break;
+  case 'e':
+    gpio_low(tmc_pins[tmc].en_port, tmc_pins[tmc].en_pin);
+    uart_queue_str("MOSFETs enabled\r\n");
+    break;
+  case 'E':
+    for(i = 0; i < 3; i++) {
+      gpio_low(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+    }
+    uart_queue_str("All MOSFETs enabled\r\n");
+    break;
+  case 'd':
+    gpio_high(tmc_pins[tmc].en_port, tmc_pins[tmc].en_pin);
+    uart_queue_str("MOSFETs disabled\r\n");
+    break;
+  case 'D':
+    for(i = 0; i < 3; i++) {
+      gpio_high(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+    }
+    uart_queue_str("All MOSFETs disabled\r\n");
+    break;
+  case 'i':
+    uart_queue_str("Re-initalizing TMCs\r\n");
+    tmc_init();
+    break;
+  case 'c':
+    display_config_menu(2);
+    menu_state = MENU_CONFIG;
+    show_menu = 0;
+    break;
+  case 'm':
+    display_motion_menu(2);
+    menu_state = MENU_MOTION;
+    show_menu = 0;
+    break;
+  case '?':
+    show_menu = 2;
+    break;
+  default:
+    show_menu = 0;
+    break;
+  }
+
+  if (show_menu) {
+    display_main_menu(show_menu);
+  }
+}
+
+
 
 
 void process_input(char c)
@@ -405,6 +524,9 @@ void process_input(char c)
           break;
         case MENU_CONFIG:
           config_menu(c);
+          break;
+        case MENU_MOTION:
+          motion_menu(c);
           break;
       }
       break;
@@ -421,11 +543,10 @@ void process_input(char c)
           input_state = INPUT_MENU;
           break;
         default:
-          update_hex(c);
+          read_hex(c);
           break;
       }
       break;
-
 
     case INPUT_DEC:
       switch(c) {
@@ -439,7 +560,7 @@ void process_input(char c)
         input_state = INPUT_MENU;
         break;
       default:
-        update_dec(c);
+        read_dec(c);
         break;
       }
       break;

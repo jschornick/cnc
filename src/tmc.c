@@ -49,11 +49,12 @@ tmc_pinout_t tmc_pins[3] = {
                        | SGCSCONF_SFILT_ON )
 
 //uint8_t cscale_init[] =  { 0x6, 0x4, 0xe };
-uint8_t cscale_init[] =  { 0x6, 0x2, 0xe };
+//uint8_t cscale_init[] =  { 0x6, 0x2, 0xe };
+uint8_t cscale_init[] =  { 0x6, 0x2, 0xa };
 
 #define smarten_init (SMARTEN)
 
-
+uint8_t tmc_axis_conf[] = { TMC_POLARITY_NORMAL, TMC_POLARITY_NORMAL, TMC_POLARITY_NORMAL };
 
 void tmc_init(void)
 {
@@ -160,4 +161,30 @@ void tmc_set_microstep(uint8_t tmc, uint32_t value)
 {
   tmc_config[tmc].drvctl.MRES = value;
   tmc_reconfigure(tmc, &tmc_config[tmc]);
+}
+
+// set fwd/rev direction depending on axis polarity
+void tmc_set_dir(uint8_t tmc, uint8_t dir) {
+  if (tmc_axis_conf[tmc] == TMC_POLARITY_NORMAL) {
+    if (dir == TMC_FWD) {
+      gpio_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    } else {
+      gpio_low(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    }
+  } else {
+    if (dir == TMC_FWD) {
+      gpio_low(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    } else {
+      gpio_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
+    }
+  }
+}
+
+// returns TMC_FWD / TMC_REV depending on polarity and dir pin
+int8_t tmc_get_dir(uint8_t tmc) {
+  if ( gpio_get_output(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin) ) {
+    return (tmc_axis_conf[tmc] == TMC_POLARITY_NORMAL) ? TMC_FWD : TMC_REV;
+  } else {
+    return (tmc_axis_conf[tmc] == TMC_POLARITY_NORMAL) ? TMC_REV : TMC_FWD;
+  }
 }

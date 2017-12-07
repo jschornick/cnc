@@ -39,10 +39,10 @@ void button_init(void)
 void PORT1_IRQHandler(void)
 {
   // check if it was S1 or S2
-  /* if (P1->IFG & BIT1) { */
-  if (gpio_intr_flag(BUTTON1)) {
-    /* P1->IFG &= ~BIT1; // clear interrupt flag */
-    gpio_intr_clear(BUTTON1);
+  if (P1->IFG & BIT1) {
+  /* if (gpio_intr_flag(BUTTON1)) { */
+    P1->IFG &= ~BIT1; // clear interrupt flag
+    /* gpio_intr_clear(BUTTON1); */
     B1_flag = 1;
   }
   if (P1->IFG & BIT4) {

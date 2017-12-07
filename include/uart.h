@@ -46,6 +46,8 @@ void uart_queue_str(char *str);
 
 void uart_queue_uint8(uint8_t byte);
 void uart_queue_hex(uint32_t val, uint8_t bits);
+void uart_queue_dec(uint32_t val);
+void uart_queue_sdec(int32_t val);
 
 void EUSCIA0_IRQHandler(void);
 

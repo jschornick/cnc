@@ -10,10 +10,13 @@
 #include "msp432p401r.h"
 #include "uart.h"
 #include "spi.h"
+#include "timer.h"
 #include "tmc.h"
 #include "gpio.h"
 #include "buttons.h"
 #include "menu.h"
+
+#include "motion.h"
 
 // MSP-EXP432 board layout
 //
@@ -41,6 +44,8 @@ int main(void) {
   uart_init();
   spi_init();
 
+  timer_init();
+
   tmc = 0;
 
   __enable_irq();
@@ -63,11 +68,18 @@ int main(void) {
 
   while(1) {
     if(B1_flag) {
-      uart_queue_str("\r\nB1\r\n");
+      uart_queue_str("\r\nB1 : E-stop!\r\n");
+      // disable all mosfets
+      for(uint8_t i = 0; i < 3; i++) {
+        gpio_high(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+      }
       B1_flag=0;
     }
     if(B2_flag) {
-      uart_queue_str("\r\nB2\r\n");
+      uart_queue_str("\r\nB2 : E-stop\r\n");
+      for(uint8_t i = 0; i < 3; i++) {
+        gpio_high(tmc_pins[i].en_port, tmc_pins[i].en_pin);
+      }
       B2_flag=0;
     }
 
