@@ -7,6 +7,7 @@
 // Version    : See GitHub repository jschornick/cnc for revision details
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "msp432p401r.h"
 #include "uart.h"
 #include "spi.h"
@@ -32,6 +33,8 @@
 #define LED1_PIN     PIN0
 #define LED1 LED1_PORT, LED1_PIN
 
+/* motion_t sample_motion1; */
+/* motion_t sample_motion2; */
 
 int main(void) {
 
@@ -61,6 +64,10 @@ int main(void) {
   uart_queue_str("Initializing steppers... ");
   tmc_init();
   uart_queue_str("done!\r\n");
+
+
+  motion = new_motion(50, 50, 100, 100);
+  next_motion = new_motion(-50, 50, 50, 101);
 
   char new_char;
   input_state = INPUT_MENU;

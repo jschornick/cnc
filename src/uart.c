@@ -48,13 +48,15 @@ void uart_init(void)
   //   52.083 / 16  = 3.255 -> BRW = 3
   //   3.255-3 * 16 = 4     -> BRF = 4
   // Calculator: http://processors.wiki.ti.com/index.php/USCI_UART_Baud_Rate_Gen_Mode_Selection
-  EUSCI_A0->BRW = 3;
+  //EUSCI_A0->BRW = 3;
+  EUSCI_A0->BRW = 26;
 
   // MCTLW
   //   BRF = 4  (bits 7-4)
   //   BRS = 0  (bits 15-8)
   //   OS16 = 1 (bit0)
-  EUSCI_A0->MCTLW = EUSCI_A_MCTLW_OS16 | (4<<EUSCI_A_MCTLW_BRF_OFS);
+  //EUSCI_A0->MCTLW = EUSCI_A_MCTLW_OS16 | (4<<EUSCI_A_MCTLW_BRF_OFS);
+  EUSCI_A0->MCTLW = EUSCI_A_MCTLW_OS16 | (1<<EUSCI_A_MCTLW_BRF_OFS);
 
   // clear reset to enable UART
   EUSCI_A0->CTLW0 &= ~EUSCI_A_CTLW0_SWRST;

@@ -33,6 +33,7 @@ LD_FLAGS   += -T$(LD_SCRIPT)
 LD_FLAGS   += -lc -lgcc -lnosys
 LD_FLAGS   += -ffunction-sections -fdata-sections
 LD_FLAGS   += -Wl,-Map=$(NAME).map
+LD_FLAGS   += -lm
 
 # If using functions/macros from TI's driverlib, we need to link the library
 #LD_FLAGS   += $(DRIVERLIB_DIR)/driverlib/MSP432P4xx/gcc/msp432p4xx_driverlib.a

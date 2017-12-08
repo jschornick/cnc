@@ -36,9 +36,10 @@ tmc_pinout_t tmc_pins[3] = {
                       | DRVCONF_SDOFF_STEP )
 
 #define drvctl_init (DRVCTL                     \
-                     | DRVCTL_MRES_1            \
+                     | DRVCTL_MRES_2            \
                      | DRVCTL_DEDGE_BOTH        \
                      | DRVCTL_INTPOL_OFF )
+                     /* | DRVCTL_INTPOL_ON ) */
 
 #define chopconf_init ( CHOPCONF                \
                         | CHOPCONF_CHM_SPREAD   \

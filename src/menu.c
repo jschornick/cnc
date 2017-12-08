@@ -277,7 +277,7 @@ void config_menu(char c)
       uart_queue_str("List configuration\r\n");
       display_config(tmc);
       break;
-    case 'm':
+    case ASCII_ESCAPE:
       uart_queue_str("Return to main\r\n");
       menu_state = MENU_MAIN;
       show_menu = 0;
@@ -303,7 +303,13 @@ void display_motion_menu(uint8_t mode) {
     uart_queue_str("-----------\r\n");
   }
   uart_queue_str("Motion [");
-  uart_queue_hex(tmc, 4);
+  if(tmc == X_AXIS) {
+    uart_queue('X');
+  } else if(tmc == Y_AXIS) {
+    uart_queue('Y');
+  } else {
+    uart_queue('Z');
+  }
   uart_queue_str("] (");
   uart_queue_sdec(pos[X_AXIS]);
   uart_queue_str(", ");
@@ -317,18 +323,6 @@ void motion_menu(char c)
 {
   uint8_t show_menu = 1;
   switch(c) {
-    case '0':
-      tmc = 0;
-      uart_queue_str("Stepper 0 selected.\r\n");
-      break;
-    case '1':
-      tmc = 1;
-      uart_queue_str("Stepper 1 selected.\r\n");
-      break;
-    case '2':
-      tmc = 2;
-      uart_queue_str("Stepper 2 selected.\r\n");
-      break;
     case 's':
       uart_queue_str("Step ");
       gpio_toggle(tmc_pins[tmc].step_port, tmc_pins[tmc].step_pin);
@@ -355,39 +349,44 @@ void motion_menu(char c)
       gpio_high(tmc_pins[tmc].dir_port, tmc_pins[tmc].dir_pin);
       break;
     case 'x':
-      uart_queue_str("X rapid\r\n");
-      uart_queue_str("Number of steps ? ");
-      input_value = 0;
-      input_state = INPUT_DEC;
-      input_callback = rapid_x;
-      show_menu = 0;
+      tmc = X_AXIS;
+      uart_queue_str("X-axis selected.\r\n");
       break;
     case 'y':
-      uart_queue_str("Y rapid\r\n");
-      uart_queue_str("Number of steps ? ");
-      input_value = 0;
-      input_state = INPUT_DEC;
-      input_callback = rapid_y;
-      show_menu = 0;
+      tmc = Y_AXIS;
+      uart_queue_str("Y-axis selected.\r\n");
       break;
     case 'z':
-      uart_queue_str("Z rapid\r\n");
+      tmc = Z_AXIS;
+      uart_queue_str("Z-axis selected.\r\n");
+      break;
+    case 'r':
+      uart_queue_str("Rapid move\r\n");
       uart_queue_str("Number of steps ? ");
       input_value = 0;
       input_state = INPUT_DEC;
-      input_callback = rapid_z;
+      input_callback = rapid;
       show_menu = 0;
       break;
-    case 'r':
-      uart_queue_str("Rapid step speed (0-1000) ? ");
+    case 'R':
+      uart_queue_str("Set max rate\r\n");
+      uart_queue_str("Max is ");
+      uart_queue_dec(max_rate);
+      uart_queue_str(" (steps/s). New rate? ");
       input_value = 0;
       input_state = INPUT_DEC;
-      input_callback = rapid_speed;
+      input_callback = set_max_rate;
       show_menu = 0;
       break;
     case 'h':
       uart_queue_str("Return home\r\n");
       home();
+      break;
+    case '0':
+      uart_queue_str("Zero axes\r\n");
+      pos[X_AXIS] = 0;
+      pos[Y_AXIS] = 0;
+      pos[Z_AXIS] = 0;
       break;
     case 'c':
       uart_queue_str("Execute code\r\n");
@@ -398,7 +397,22 @@ void motion_menu(char c)
       code_step++;
       code_step %= 6;
       break;
+    case 't':
+      uart_queue_str("New test motion\r\n");
+      if (!next_motion) {
+        next_motion = new_motion(42, 23, max_rate, 99);
+        motion_start();
+      } else {
+        uart_queue_str("Motion queue full!\r\n");
+      }
+      break;
+
     case 'm':
+      uart_queue_str("Running motions\r\n");
+      motion_start();
+      break;
+
+    case ASCII_ESCAPE:
       uart_queue_str("Return to main\r\n");
       menu_state = MENU_MAIN;
       show_menu = 0;
