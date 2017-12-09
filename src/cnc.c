@@ -16,7 +16,7 @@
 #include "gpio.h"
 #include "buttons.h"
 #include "menu.h"
-
+#include "gcode.h"
 #include "motion.h"
 
 // MSP-EXP432 board layout
@@ -48,6 +48,8 @@ int main(void) {
   spi_init();
 
   timer_init();
+
+  init_parser();
 
   tmc = 0;
 
@@ -95,6 +97,11 @@ int main(void) {
       fifo_pop(&rx_fifo, &new_char);
       process_input(new_char);
     }
+
+    if( gcode_enabled && gcode_cmd_count ) {
+      run_gcode();
+    }
+
 
     gpio_low(LED1);
     __sleep();

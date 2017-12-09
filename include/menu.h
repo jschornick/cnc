@@ -19,6 +19,7 @@ typedef enum {
   INPUT_MENU = 0,
   INPUT_DEC,
   INPUT_HEX,
+  INPUT_GCODE,
 } Input_State_t;
 
 typedef enum {

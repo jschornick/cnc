@@ -42,7 +42,7 @@ extern motion_t *motion;
 extern motion_t *next_motion;
 extern uint32_t motion_tick;
 
-void rapid(uint32_t steps);
+void rapid(uint8_t tmc, uint32_t steps);
 
 void linear_interpolate_2d(int32_t *start_pos, int32_t *end_pos, uint16_t rate, motion_t *motion);
 

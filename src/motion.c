@@ -19,12 +19,23 @@ motion_t *motion = 0;
 motion_t *next_motion = 0;
 uint32_t motion_tick = 0;
 
-void rapid(uint32_t steps)
+void rapid(uint8_t tmc, uint32_t steps)
 {
+  int32_t xyz[] = {0, 0, 0};
   uart_queue_str("Rapid : ");
   uart_queue_dec(steps);
+  if(tmc_get_dir(tmc) == TMC_FWD) {
+    xyz[tmc] = steps;
+  } else {
+    xyz[tmc] = -steps;
+  }
   uart_queue_str(" steps\r\n");
-  motion_start();
+  if (!next_motion) {
+    next_motion = new_motion(xyz[X_AXIS], xyz[Y_AXIS], max_rate, 7);
+    motion_start();
+  } else {
+    uart_queue_str("Motion queue full!\r\n");
+  }
 }
 
 void goto_pos(int32_t x, int32_t y, int32_t z)
@@ -35,7 +46,6 @@ void goto_pos(int32_t x, int32_t y, int32_t z)
 
 void home(void)
 {
-  /* motion->next_motion = new_motion(-pos[X_AXIS],-pos[Y_AXIS], MAX_RATE, 42); */
   if (!next_motion) {
     next_motion = new_motion(-pos[X_AXIS],-pos[Y_AXIS], max_rate, 42);
     motion_start();
@@ -46,19 +56,7 @@ void home(void)
 
 void set_max_rate(uint32_t speed)
 {
-
   max_rate = speed;
-
-  /* if (speed <= 1000) { */
-  /*   // speed == 1 --> 32.77 step/s */
-  /*   // speed == 500 --> 65.5 steps/s */
-  /*   step_timer_period(1001 - speed); */
-  /*   uart_queue_str("Rapid speed set to : "); */
-  /*   uart_queue_dec(speed); */
-  /*   uart_queue_str("\r\n"); */
-  /* } else { */
-  /*   uart_queue_str("Out of range!\r\n"); */
-  /* } */
 }
 
 void motion_start(void)
@@ -95,22 +93,8 @@ void linear_interpolate_2d(int32_t *start_pos, int32_t *end_pos, uint16_t rate, 
   uint32_t max_x = (t_us * max_rate)/1000000 + 1;
   uint32_t max_y = (t_us * max_rate)/1000000 + 1;
 
-  if (abs(dx) > max_x) {
-    uart_queue_str("Requested dx = ");
-    uart_queue_sdec( dx );
-    uart_queue_str(", but max dx = ");
-    uart_queue_dec(max_x);
-    uart_queue_str("\r\n");
-    return;
-  }
-
-  if (abs(dy) > max_y) {
-    uart_queue_str("Requested dy = ");
-    uart_queue_sdec( dy );
-    uart_queue_str(", but max dy = ");
-    uart_queue_dec(max_x);
-    uart_queue_str("\r\n");
-    return;
+  if ((abs(dx) > max_x) || (abs(dy) > max_y)) {
+    uart_queue_str(" WARNING: Motion interpolates above max rate!\r\n");
   }
 
   // determine direction for each axis
@@ -167,42 +151,42 @@ void linear_interpolate_2d(int32_t *start_pos, int32_t *end_pos, uint16_t rate, 
     steps[i].axes[Z_AXIS] = 0;
 
     t += (61*skip_ticks) / 2;  // skip ahead ticks, 30.5us each
-    uart_queue_str("t = ");
-    uart_queue_dec(t);
+    /* uart_queue_str("t = "); */
+    /* uart_queue_dec(t); */
     steps[i].timer_ticks = skip_ticks;
     if (t >= next_x) {
-      uart_queue_str(" X ");
+      /* uart_queue_str(" X "); */
       steps[i].axes[X_AXIS] = 1;
       next_x += x_dt;
       dx--;
     }
     if (t >= next_y) {
-      uart_queue_str("  Y");
+      /* uart_queue_str("  Y"); */
       steps[i].axes[Y_AXIS] = 1;
       next_y += y_dt;
       dy--;
     }
-    uart_queue_str("\r\n");
+    /* uart_queue_str("\r\n"); */
 
     i++;
   }
 
   motion->count = i;
 
-  uart_queue_str("\r\n----\r\n");
-  for( i = 0; i < motion->count; i++ ) {
-    uart_queue_str("tk = ");
-    uart_queue_dec(motion->steps[i].timer_ticks);
-    if (motion->steps[i].axes[X_AXIS]) {
-      uart_queue_str(": X ");
-    } else {
-      uart_queue_str(":   ");
-    }
-    if (motion->steps[i].axes[Y_AXIS]) {
-      uart_queue_str("Y ");
-    }
-    uart_queue_str("\r\n");
-  }
+  /* uart_queue_str("\r\n----\r\n"); */
+  /* for( i = 0; i < motion->count; i++ ) { */
+  /*   uart_queue_str("tk = "); */
+  /*   uart_queue_dec(motion->steps[i].timer_ticks); */
+  /*   if (motion->steps[i].axes[X_AXIS]) { */
+  /*     uart_queue_str(": X "); */
+  /*   } else { */
+  /*     uart_queue_str(":   "); */
+  /*   } */
+  /*   if (motion->steps[i].axes[Y_AXIS]) { */
+  /*     uart_queue_str("Y "); */
+  /*   } */
+  /*   uart_queue_str("\r\n"); */
+  /* } */
 
 }
 

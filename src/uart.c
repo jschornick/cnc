@@ -161,6 +161,10 @@ void uart_queue_sdec(int32_t val) {
   }
 }
 
+void uart_flush(void) {
+  while(tx_fifo.count);
+}
+
 void EUSCIA0_IRQHandler(void)
 {
   // FXIFG automatically cleared on read from RXBUF

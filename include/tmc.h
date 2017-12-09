@@ -13,6 +13,9 @@
 #include "msp432p401r.h"
 #include "gpio.h"
 
+// The selected stepper controller
+extern uint8_t tmc;
+
 #define TMC_CLK  15000000L   /* 15MHz internal clock */
 
 #define TMC_POLARITY_NORMAL 1

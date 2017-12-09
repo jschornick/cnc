@@ -11,6 +11,7 @@
 #include "tmc.h"
 #include "uart.h"
 
+uint8_t tmc;
 
 tmc_config_t tmc_config[3];
 tmc_pinout_t tmc_pins[3] = {
@@ -89,6 +90,8 @@ void tmc_init(void)
     config.sgcsconf.CSCALE = cscale_init[i];
     tmc_reconfigure(i, &config);
   }
+
+  tmc = 0;
 }
 
 void tmc_reconfigure(uint8_t tmc, tmc_config_t *config)

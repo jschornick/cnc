@@ -10,10 +10,10 @@
 #include "uart.h"
 #include "tmc.h"
 #include "motion.h"
+#include "gcode.h"
 #include "menu.h"
 
 // The selected stepper controller
-uint8_t tmc = 0;
 
 Input_State_t input_state;
 Menu_State_t menu_state;
@@ -27,9 +27,10 @@ uint32_t code[][3] = { {-200, 200, 0},
                        {-200, 200, 0},
                        {200, -200}};
 
-void (*input_callback)(uint32_t);
+void (*input_callback)(void *arg);
 
-void update_current_scale(uint32_t val) {
+void update_current_scale_cb(void *arg) {
+  uint32_t val = *((uint32_t *) arg);
   if (val <= 0x1f) {
     tmc_set_current_scale(tmc, val);
     uart_queue_str("Config updated!\r\n");
@@ -41,7 +42,8 @@ void update_current_scale(uint32_t val) {
   }
 }
 
-void update_microstep(uint32_t val) {
+void update_microstep_cb(void *arg) {
+  uint32_t val = *((uint32_t *) arg);
   if (val <= 0x08) {
     tmc_set_microstep(tmc, val);
     uart_queue_str("Config updated!\r\n");
@@ -53,6 +55,13 @@ void update_microstep(uint32_t val) {
   }
 }
 
+void rapid_motion_cb(void *arg) {
+  rapid(tmc, *((uint32_t *) arg));
+}
+
+void set_max_rate_cb(void *arg) {
+  set_max_rate( *(uint32_t *) arg);
+}
 
 void display_config(uint8_t tmc)
 {
@@ -260,7 +269,7 @@ void config_menu(char c)
       uart_queue_str("\r\nNew limit (0x00 - 0x1f)? ");
       input_value = 0;
       input_state = INPUT_HEX;
-      input_callback = update_current_scale;
+      input_callback = update_current_scale_cb;
       show_menu = 0;
       break;
     case 's':
@@ -270,7 +279,7 @@ void config_menu(char c)
       uart_queue_str("\r\nNew resolution (0x0 - 0x8)? ");
       input_value = 0;
       input_state = INPUT_HEX;
-      input_callback = update_microstep;
+      input_callback = update_microstep_cb;
       show_menu = 0;
       break;
     case 'l':
@@ -365,7 +374,7 @@ void motion_menu(char c)
       uart_queue_str("Number of steps ? ");
       input_value = 0;
       input_state = INPUT_DEC;
-      input_callback = rapid;
+      input_callback = rapid_motion_cb;
       show_menu = 0;
       break;
     case 'R':
@@ -375,7 +384,7 @@ void motion_menu(char c)
       uart_queue_str(" (steps/s). New rate? ");
       input_value = 0;
       input_state = INPUT_DEC;
-      input_callback = set_max_rate;
+      input_callback = set_max_rate_cb;
       show_menu = 0;
       break;
     case 'h':
@@ -510,6 +519,20 @@ void main_menu(char c)
     menu_state = MENU_MOTION;
     show_menu = 0;
     break;
+  case 'g':
+    uart_queue_str("G-code\r\n");
+    input_state = INPUT_GCODE;
+    show_menu = 0;
+    break;
+  case 'G':
+    if (gcode_enabled) {
+      uart_queue_str("G-code diabled!\r\n");
+      gcode_enabled = 0;
+    } else {
+      uart_queue_str("G-code enabled!\r\n");
+      gcode_enabled = 1;
+    }
+    break;
   case '?':
     show_menu = 2;
     break;
@@ -522,8 +545,6 @@ void main_menu(char c)
     display_main_menu(show_menu);
   }
 }
-
-
 
 
 void process_input(char c)
@@ -553,7 +574,7 @@ void process_input(char c)
           break;
         case '\r':
           uart_queue_str("\r\n");
-          input_callback(input_value);
+          input_callback( (void *) &input_value);
           input_state = INPUT_MENU;
           break;
         default:
@@ -570,12 +591,29 @@ void process_input(char c)
         break;
       case '\r':
         uart_queue_str("\r\n");
-        input_callback(input_value);
+        input_callback( (void *) &input_value);
         input_state = INPUT_MENU;
         break;
       default:
         read_dec(c);
         break;
+      }
+      break;
+
+    case INPUT_GCODE:
+      switch(c) {
+        case ASCII_ESCAPE:
+          uart_queue_str("\r\n");
+          input_state = INPUT_MENU;
+          display_main_menu(1);
+          break;
+        case '\r':
+          fifo_push(&gcode_input_fifo, c);
+          parse_gcode();
+          break;
+        default:
+          fifo_push(&gcode_input_fifo, c);
+          break;
       }
       break;
   }
