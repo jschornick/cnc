@@ -231,24 +231,6 @@ void display_tmc_status(void)
 }
 
 
-void display_main_menu(uint8_t mode) {
-  if (mode == 2) {
-    uart_queue_str("\r\n\r\n");
-    uart_queue_str("Main menu\r\n");
-    uart_queue_str("---------\r\n");
-  }
-
-  uart_queue_str("Main [");
-  if(tmc == X_AXIS) {
-    uart_queue('X');
-  } else if(tmc == Y_AXIS) {
-    uart_queue('Y');
-  } else {
-    uart_queue('Z');
-  }
-  uart_queue_str("] > ");
-}
-
 void display_config_menu(uint8_t mode) {
   if (mode == 2) {
     uart_queue_str("\r\n\r\n");
@@ -298,6 +280,10 @@ void config_menu(char c)
     case 'l':
       uart_queue_str("List configuration\r\n");
       display_config(tmc);
+      break;
+    case 'r':
+      uart_queue_str("Read TMC status\r\n");
+      display_tmc_status();
       break;
     case ASCII_ESCAPE:
       uart_queue_str("Return to main\r\n");
@@ -435,8 +421,12 @@ void motion_menu(char c)
       break;
 
     case 'm':
-      uart_queue_str("Running motions\r\n");
+      uart_queue_str("Motion start\r\n");
       motion_start();
+      break;
+    case 'M':
+      uart_queue_str("Motion stop\r\n");
+      motion_stop();
       break;
 
     case ASCII_ESCAPE:
@@ -479,6 +469,20 @@ void read_hex(char c)
   }
 }
 
+
+void display_main_menu(uint8_t mode) {
+  if (mode == 2) {
+    uart_queue_str("\r\n\r\n");
+    uart_queue_str("Main menu\r\n");
+    uart_queue_str("---------\r\n");
+  }
+
+  uart_queue_str("Main [G:");
+  uart_queue_dec(gcode_cmd_count);
+  uart_queue_str("] > ");
+
+}
+
 void main_menu(char c)
 {
   uint8_t i = 0;
@@ -499,10 +503,6 @@ void main_menu(char c)
     uart_queue_str("Z-axis selected.\r\n");
     break;
 
-  case 'r':
-    uart_queue_str("Read TMC\r\n");
-    display_tmc_status();
-    break;
   case 'e':
     gpio_low(tmc_pins[tmc].en_port, tmc_pins[tmc].en_pin);
     uart_queue_str("MOSFETs enabled\r\n");
@@ -537,17 +537,29 @@ void main_menu(char c)
     menu_state = MENU_MOTION;
     show_menu = 0;
     break;
-  case 'g':
-    uart_queue_str("G-code\r\n");
+  case 'r':
+    uart_queue_str("Read G-code...\r\n");
+    motion_stop();
+    gcode_enabled = 0;
+    init_gcode_state();
+    uart_queue_str("\r\nG-code > ");
     input_state = INPUT_GCODE;
     show_menu = 0;
     break;
+  case 'g':
+    uart_queue_str("Step G-code\r\n");
+    if (gcode_cmd_count) {
+      run_gcode();
+    } else {
+      uart_queue_str("G-code queue empty!\r\n");
+    }
+    break;
   case 'G':
     if (gcode_enabled) {
-      uart_queue_str("G-code disabled!\r\n");
+      uart_queue_str("Pause G-code queue\r\n");
       gcode_enabled = 0;
     } else {
-      uart_queue_str("G-code enabled!\r\n");
+      uart_queue_str("Run G-code queue\r\n");
       gcode_enabled = 1;
     }
     break;
@@ -555,7 +567,7 @@ void main_menu(char c)
     show_menu = 2;
     break;
   default:
-    show_menu = 0;
+    uart_queue_str("\r\n");
     break;
   }
 
@@ -634,8 +646,12 @@ void process_input(char c)
         case '\r':
           fifo_push(&gcode_input_fifo, c);
           parse_gcode();
+          uart_queue_str("\r\nG-code > ");
+          break;
+        case '\n':
           break;
         default:
+          uart_queue(c);
           fifo_push(&gcode_input_fifo, c);
           break;
       }

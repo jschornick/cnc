@@ -10,34 +10,26 @@
 #ifndef __GCODE_H
 #define __GCODE_H
 
-#include <stdbool.h>
 #include "fifo.h"
-
-/* typedef enum { */
-/*   uint8_t interpolate;  // t/f */
-/*   uint8_t relative;  // t/f */
-/* } gcode_move_mode_t; */
 
 extern uint8_t gcode_enabled;
 
-typedef enum {
-  GCODE_G = 0,
-  GCODE_M,
-  GCODE_X,
-  GCODE_Y,
-  GCODE_Z,
-  GCODE_F,
-  GCODE_CODE_MAX
-} gcode_code_t;
+#define GCODE(x) (x- 'A')
+#define GCODE_CHAR(x) (x + 'A')
+#define GCODE_MAX 26
 
+#define GCODE_IS_SET(lineptr,x) ( (lineptr)->set & (1<<(x - 'A')) )
+
+#define GCODE_RAPID  0
+#define GCODE_LINEAR 1
+#define GCODE_ABSOLUTE 90
+#define GCODE_RELATIVE 91
+
+// TODO: Storing the parsed G-code this way wastes memory and doesn't allow
+// multiple codes of the same letter (e.g. G01 G90 on one line)
 typedef struct {
-  /* struct { */
-  /*   uint16_t GCODE_G : 1; */
-  /*   uint16_t GCODE_M : 1; */
-  /*   uint16_t GCODE_X : 1; */
-  /* } */
-  bool set[GCODE_CODE_MAX];
-  int32_t  value[GCODE_CODE_MAX];
+  int32_t set;
+  int16_t value[GCODE_MAX];
 } gcode_line_t;
 
 typedef enum {
@@ -46,7 +38,7 @@ typedef enum {
   GCODE_PARSE_VALUE
 } gcode_parser_state_t;
 
-#define GCODE_CMD_QUEUE_SIZE 1000
+#define GCODE_CMD_QUEUE_SIZE 500
 extern gcode_line_t gcode_cmd_queue[];
 extern uint16_t gcode_cmd_count;
 
@@ -54,6 +46,8 @@ extern uint16_t gcode_cmd_count;
 extern fifo_t gcode_input_fifo;
 
 void init_parser(void);
+
+void init_gcode_state(void);
 
 void parse_gcode();
 

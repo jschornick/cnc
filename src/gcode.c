@@ -19,59 +19,91 @@ uint16_t gcode_cmd_count;
 
 uint8_t gcode_enabled = 0;  // does queued g-code get run?
 
-uint8_t gcode_motion_mode = 0;
-uint8_t gcode_coord_mode = 90;  // 90 absolute, 91 relative
+uint8_t gcode_motion_mode = GCODE_RAPID;
+uint8_t gcode_coord_mode = GCODE_ABSOLUTE;
 
 // static gcode state variables
 uint16_t gcode_feed_rate = 0;
 uint32_t gcode_x = 0;
-uint32_t gcode_y = 0 ;
+uint32_t gcode_y = 0;
 uint32_t gcode_z = 0;
 
 gcode_line_t gcode_cmd_queue[GCODE_CMD_QUEUE_SIZE];
 
+void init_gcode_state(void)
+{
+  gcode_motion_mode = GCODE_RAPID;
+  gcode_coord_mode = GCODE_ABSOLUTE;
+  gcode_feed_rate = 0;
+
+  // Alternately reset to machine XYZ state??
+  gcode_x = 0;
+  gcode_y = 0;
+  gcode_z = 0;
+}
+
 void gcode_to_motion(size_t index)
 {
   gcode_line_t *line = &gcode_cmd_queue[index];
-  uart_queue_str("Running G-code:\r\n");
-  print_gcode_line(index);
+  uint16_t id = index;
+  /* uart_queue_str("Running G-code:\r\n"); */
+  /* print_gcode_line(index); */
+  uart_queue_str("\r\nRunning G-code cmd # ");
+  uart_queue_dec(index);
+  //if (gcode_cmd_queue[index].set[GCODE('N')]) {
+  if (GCODE_IS_SET(&gcode_cmd_queue[index], 'N')) {
+    uart_queue_str(" (line #");
+    uart_queue_dec(gcode_cmd_queue[index].value[GCODE('N')]);
+    uart_queue_str(")");
+    id = gcode_cmd_queue[index].value[GCODE('N')];
+  }
+  uart_queue_str("\r\n");
 
-  if( line->set[GCODE_G] ) {
-    if (line->value[GCODE_G] == 1) {
-      gcode_motion_mode = 1;  // interpolate
-    } else {
-      gcode_motion_mode = 0;  // rapid
+  /* if( line->set[GCODE('G')] ) { */
+  if( GCODE_IS_SET(line, 'G') ) {
+    switch (line->value[GCODE('G')]) {
+      case GCODE_RAPID:
+        gcode_motion_mode = GCODE_RAPID;
+        break;
+      case GCODE_LINEAR:
+        gcode_motion_mode = GCODE_LINEAR;
+        break;
+      case GCODE_ABSOLUTE:
+        gcode_coord_mode = GCODE_ABSOLUTE;
+        break;
+      case GCODE_RELATIVE:
+        gcode_coord_mode = GCODE_RELATIVE;
+        break;
+      // otherwise keep existing mode
     }
-  } // else keep existing motion mode
-
-  int32_t new_x = gcode_x;
-  int32_t new_y = gcode_y;
-  int32_t new_z = gcode_z;
-
-  // TODO: use ternary op
-  if (line->set[GCODE_X]) {
-    new_x = line->value[GCODE_X];
-  }
-  if (line->set[GCODE_Y]) {
-    new_y = line->value[GCODE_Y];
-  }
-  if (line->set[GCODE_Z]) {
-    new_y = line->value[GCODE_Y];
   }
 
-  if (line->set[GCODE_F]) {
-    gcode_feed_rate = line->value[GCODE_F];
-  }
+  int32_t dx;
+  int32_t dy;
+  int32_t dz;
 
-  if( gcode_motion_mode == 1 ) {
-    next_motion = new_linear_motion(new_x - gcode_x, new_y - gcode_y, new_z - gcode_z, gcode_feed_rate, index);
-  } else {
-    next_motion = new_linear_motion(new_x - gcode_x, new_y - gcode_y, new_z - gcode_z, rapid_rate, index);
+  if (gcode_coord_mode == GCODE_RELATIVE) {
+    dx = (GCODE_IS_SET(line,'X')) ? line->value[GCODE('X')] : 0;
+    dy = (GCODE_IS_SET(line,'Y')) ? line->value[GCODE('Y')] : 0;
+    dz = (GCODE_IS_SET(line,'Z')) ? line->value[GCODE('Z')] : 0;
+  } else {  // absolute positioning
+    dx = (GCODE_IS_SET(line,'X')) ? line->value[GCODE('X')] - gcode_x : 0;
+    dy = (GCODE_IS_SET(line,'Y')) ? line->value[GCODE('Y')] - gcode_y : 0;
+    dz = (GCODE_IS_SET(line,'Z')) ? line->value[GCODE('Z')] - gcode_z : 0;
   }
-  gcode_x = new_x;
-  gcode_y = new_y;
+  gcode_x += dx;
+  gcode_y += dy;
+  gcode_z += dz;
 
-  motion_start();
+  gcode_feed_rate = (GCODE_IS_SET(line,'F')) ? line->value[GCODE('F')] : gcode_feed_rate;
+
+  if ( dx || dy || dz ) {
+    if( gcode_motion_mode == 1 ) {
+      next_motion = new_linear_motion(dx, dy, dz, gcode_feed_rate, id);
+    } else {
+      next_motion = new_rapid_motion(dx, dy, dz, id);
+    }
+  }
 }
 
 void run_gcode(void)
@@ -92,15 +124,16 @@ void run_gcode(void)
     } else {
       /* uart_queue_str("...but motion queue full!\r\n"); */
     }
+    motion_start();
   }
 }
 
 void gcode_zero_line(size_t index)
 {
-  size_t i;
-  for (i=0; i<GCODE_CODE_MAX; i++) {
-    gcode_cmd_queue[index].set[i] = 0;
-  }
+  /* for (uint8_t i=0; i<GCODE_MAX; i++) { */
+  /*   gcode_cmd_queue[index].set[i] = 0; */
+  /* } */
+  gcode_cmd_queue[index].set = 0;
 }
 
 
@@ -117,28 +150,31 @@ void init_parser(void)
 }
 
 
-void add_to_gcode_line(size_t index, gcode_code_t code, int32_t value)
+void add_to_gcode_line(size_t index, char code, int32_t value)
 {
-  gcode_cmd_queue[index].set[code] = 1;
-  gcode_cmd_queue[index].value[code] = value;
-  /* uart_queue_str("Adding "); */
-  /* uart_queue_dec(code); */
-  /* uart_queue_str(" : "); */
-  /* uart_queue_sdec(value); */
-  /* uart_queue_str("\r\n"); */
+  /* gcode_cmd_queue[index].set[GCODE(code)] = 1; */
+  gcode_cmd_queue[index].set |= 1<<(GCODE(code));
+  gcode_cmd_queue[index].value[GCODE(code)] = value;
 }
 
 void print_gcode_line(size_t index)
 {
-  uart_queue_str("Line # ");
+  uart_queue_str("\r\nG-code cmd # ");
   uart_queue_dec(index);
-  uart_queue_str(" codes:\r\n");
-  for (uint8_t i = 0; i<GCODE_CODE_MAX; i++) {
-    if (gcode_cmd_queue[index].set[i] == 1) {
+  //if (gcode_cmd_queue[index].set[GCODE('N')]) {
+  if (GCODE_IS_SET(&gcode_cmd_queue[index], 'N')) {
+    uart_queue_str(" (line #");
+    uart_queue_dec(gcode_cmd_queue[index].value[GCODE('N')]);
+    uart_queue_str(")");
+  }
+  uart_queue_str("\r\n");
+  /* for (uint8_t i = 0; i<GCODE_CODE_MAX; i++) { */
+  for (char i='A'; i<='Z'; i++) {
+    if ( GCODE_IS_SET(&gcode_cmd_queue[index],i) ) {
       uart_queue_str("  ");
-      uart_queue_dec(i);
+      uart_queue(i);
       uart_queue_str(" = ");
-      uart_queue_sdec(gcode_cmd_queue[index].value[i]);
+      uart_queue_sdec(gcode_cmd_queue[index].value[GCODE(i)]);
       uart_queue_str("\r\n");
     }
   }
@@ -159,7 +195,7 @@ void end_gcode_line()
 void parse_gcode()
 {
   char c;
-  gcode_code_t code;
+  char code;
   int32_t value;
   int8_t sign;
   gcode_parser_state_t state = GCODE_PARSE_CODE;
@@ -174,30 +210,6 @@ void parse_gcode()
 
       case GCODE_PARSE_CODE:
         switch(c) {
-          case 'G':
-            code = GCODE_G;
-            state = GCODE_PARSE_VALUE_START;
-            break;
-          case 'M':
-            code = GCODE_M;
-            state = GCODE_PARSE_VALUE_START;
-            break;
-          case 'X':
-            code = GCODE_X;
-            state = GCODE_PARSE_VALUE_START;
-            break;
-          case 'Y':
-            code = GCODE_Y;
-            state = GCODE_PARSE_VALUE_START;
-            break;
-          case 'F':
-            code = GCODE_F;
-            state = GCODE_PARSE_VALUE_START;
-            break;
-          case 'Z':
-            code = GCODE_Z;
-            state = GCODE_PARSE_VALUE_START;
-            break;
           case ' ':
             break;
           case '\r':
@@ -206,7 +218,12 @@ void parse_gcode()
           case '\n':
             break;
           default:
-            uart_queue_str("Unexpected G-code char!\r\n");
+            if( (c >= 'A') && (c <= 'Z') ) {
+              code = c;
+              state = GCODE_PARSE_VALUE_START;
+            } else {
+              uart_queue_str("Unexpected G-code char!\r\n");
+            }
             break;
         }
         break;
@@ -223,7 +240,7 @@ void parse_gcode()
             }
             break;
         case '.':
-          uart_queue_str("Decimal values not supported!\r\n");
+          uart_queue_str("Decimal not supported!\r\n");
           break;
         case ' ':
           add_to_gcode_line(gcode_cmd_head, code, value*sign);
@@ -231,6 +248,7 @@ void parse_gcode()
           break;
         case '\r':
           add_to_gcode_line(gcode_cmd_head, code, value*sign);
+          print_gcode_line(gcode_cmd_head);
           end_gcode_line();
           state = GCODE_PARSE_CODE;
           break;

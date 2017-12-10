@@ -18,6 +18,7 @@ uint32_t rapid_rate = 300;
 motion_t *motion = 0;
 motion_t *next_motion = 0;
 uint32_t motion_tick = 0;
+uint32_t motion_enabled = 0;
 
 void rapid(uint8_t tmc, int32_t steps)
 {
@@ -58,8 +59,19 @@ void home(void)
 
 void motion_start(void)
 {
-  TIMER_A1->CCR[0] = 1;
-  TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;
+  if(!motion_enabled) {
+    uart_queue_str("Motion enabled\r\n");
+  }
+  /* TIMER_A1->CCR[0] = 1; */
+  motion_enabled = 1;
+  /* TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE; */
+  step_timer_on();
+}
+
+void motion_stop(void)
+{
+  motion_enabled = 0;
+  uart_queue_str("Motion disabled\r\n");
 }
 
 #include <math.h>  // sqrtl
@@ -70,10 +82,7 @@ void rapid_interpolate(int32_t *start_pos, int32_t *end_pos, motion_t *motion)
   int32_t dx = end_pos[X_AXIS] - start_pos[X_AXIS];
   int32_t dy = end_pos[Y_AXIS] - start_pos[Y_AXIS];
   int32_t dz = end_pos[Z_AXIS] - start_pos[Z_AXIS];
-  uart_queue_str("\r\nRapid interpolate:");
-  uart_queue_str("\r\n  step/s = ");
-  uart_queue_dec(rapid_rate);
-  uart_queue_str("\r\n");
+  uart_queue_str("\r\nRapid interpolate:\r\n");
   uart_queue_str("  (dx, dy, dz) = (");
   uart_queue_sdec(dx);
   uart_queue_str(", ");
@@ -92,9 +101,6 @@ void rapid_interpolate(int32_t *start_pos, int32_t *end_pos, motion_t *motion)
   dz = abs(dz);
 
   uint32_t longest = (dx > dy) ?  ((dx > dz) ? dx : dz)  :  ((dy > dz) ? dy : dz);
-  uart_queue_str("\r\n  Longest : ");
-  uart_queue_dec(longest);
-
   motion->steps = malloc( sizeof(step_timing_t) * longest);
   step_timing_t *steps = motion->steps;
 
@@ -250,7 +256,7 @@ void linear_interpolate(int32_t *start_pos, int32_t *end_pos, uint16_t rate, mot
 
 }
 
-motion_t * new_rapid_motion(int32_t x, int32_t y, int32_t z, uint8_t id)
+motion_t * new_rapid_motion(int32_t x, int32_t y, int32_t z, uint16_t id)
 {
   int32_t start[3];
   int32_t end[3];
@@ -269,7 +275,7 @@ motion_t * new_rapid_motion(int32_t x, int32_t y, int32_t z, uint8_t id)
   return motion;
 }
 
-motion_t * new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint8_t id)
+motion_t * new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint16_t id)
 {
   int32_t start[3];
   int32_t end[3];

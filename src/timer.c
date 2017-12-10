@@ -72,9 +72,11 @@ void TA1_0_IRQHandler(void)
 
   if(motion) {
     if (motion_tick == 0) {
-      uart_queue_str("Motion #");
+      uart_queue_str("\r\nBegin motion #");
       uart_queue_dec(motion->id);
-      uart_queue_str(" started!\r\n");
+      uart_queue_str(" (");
+      uart_queue_dec(motion->count);
+      uart_queue_str(" steps)\r\n");
       tmc_set_dir(X_AXIS, motion->dirs[X_AXIS]);
       tmc_set_dir(Y_AXIS, motion->dirs[Y_AXIS]);
       tmc_set_dir(Z_AXIS, motion->dirs[Z_AXIS]);
@@ -82,9 +84,12 @@ void TA1_0_IRQHandler(void)
 
     if(motion_tick < motion->count) {
       TIMER_A1->CCR[0] = motion->steps[motion_tick].timer_ticks;
+
       /* uart_queue_hex((uint32_t) motion->steps[motion_tick].axes[X_AXIS],4); */
       /* uart_queue_hex((uint32_t) motion->steps[motion_tick].axes[Y_AXIS],4); */
+      /* uart_queue_hex((uint32_t) motion->steps[motion_tick].axes[Z_AXIS],4); */
       /* uart_queue_str("\r\n"); */
+
       for (uint8_t axis=0; axis<3; axis++) {
         if (motion->steps[motion_tick].axes[axis]) {
           gpio_toggle(tmc_pins[axis].step_port, tmc_pins[axis].step_pin);
@@ -92,25 +97,31 @@ void TA1_0_IRQHandler(void)
         }
       }
       motion_tick++;
-      TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;
+      if(motion_enabled) {
+        TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;
+      }
     } else {  // motion complete
+      uart_queue_str("\r\nMotion # ");
+      uart_queue_dec(motion->id);
+      uart_queue_str(" complete\r\n");
       free_motion(motion);
       motion = 0;
-      uart_queue_str("Motion complete!\r\n");
     }
   }
 
   // promote queued motion if available
   if(!motion) {
     if (next_motion) {
-      uart_queue_str("Prepping queued motion!\r\n");
+      uart_queue_str("\r\nPrep queued motion!\r\n");
       motion = next_motion;
       next_motion = 0;
       motion_tick = 0;
       TIMER_A1->CCR[0] = motion->steps[motion_tick].timer_ticks;
-      TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;
+      if(motion_enabled) {
+        TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;
+      }
     } else {
-      uart_queue_str("No queued motions!\r\n");
+      uart_queue_str("Motion queue empty!\r\n");
     }
   }
 

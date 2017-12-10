@@ -30,7 +30,7 @@ typedef struct {
 
 // interpolated motion set
 typedef struct motion_s {
-  uint8_t id;
+  uint16_t id;
   uint8_t dirs[3];  // step direcitons per axis, set once per motion
   uint16_t count;   // total step changes
   step_timing_t *steps;  // malloc'd array of timestamped steps
@@ -42,17 +42,19 @@ extern int32_t target[];
 extern motion_t *motion;
 extern motion_t *next_motion;
 extern uint32_t motion_tick;
+extern uint32_t motion_enabled;
 
 void rapid(uint8_t tmc, int32_t steps);
 
 void linear_interpolate(int32_t *start_pos, int32_t *end_pos, uint16_t rate, motion_t *motion);
 void rapid_interpolate(int32_t *start_pos, int32_t *end_pos, motion_t *motion);
 
-motion_t *new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint8_t id);
-motion_t *new_rapid_motion(int32_t x, int32_t y, int32_t z, uint8_t id);
+motion_t *new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint16_t id);
+motion_t *new_rapid_motion(int32_t x, int32_t y, int32_t z, uint16_t id);
 
 void free_motion(motion_t *);
 void motion_start(void);
+void motion_stop(void);
 
 void goto_pos(int32_t x, int32_t y, int32_t z);
 

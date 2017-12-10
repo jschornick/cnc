@@ -68,8 +68,8 @@ int main(void) {
   uart_queue_str("done!\r\n");
 
 
-  motion = new_linear_motion(50, 50, 0, 100, 100);
-  next_motion = new_linear_motion(-50, 50, 0, 50, 101);
+  /* motion = new_linear_motion(50, 50, 0, 100, 100); */
+  /* next_motion = new_linear_motion(-50, 50, 0, 50, 101); */
 
   char new_char;
   input_state = INPUT_MENU;
