@@ -19,7 +19,8 @@
 #define Y_AXIS 0  // strong 262
 #define Z_AXIS 1  // weak 262
 
-extern uint32_t max_rate;
+#define MAX_RATE 400
+extern uint32_t rapid_rate;
 
 typedef struct {
   uint16_t timer_ticks;
@@ -42,17 +43,19 @@ extern motion_t *motion;
 extern motion_t *next_motion;
 extern uint32_t motion_tick;
 
-void rapid(uint8_t tmc, uint32_t steps);
+void rapid(uint8_t tmc, int32_t steps);
 
-void linear_interpolate_2d(int32_t *start_pos, int32_t *end_pos, uint16_t rate, motion_t *motion);
+void linear_interpolate(int32_t *start_pos, int32_t *end_pos, uint16_t rate, motion_t *motion);
+void rapid_interpolate(int32_t *start_pos, int32_t *end_pos, motion_t *motion);
 
-motion_t *new_motion(int32_t x, int32_t y, uint16_t speed, uint8_t id);
+motion_t *new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint8_t id);
+motion_t *new_rapid_motion(int32_t x, int32_t y, int32_t z, uint8_t id);
+
 void free_motion(motion_t *);
 void motion_start(void);
 
 void goto_pos(int32_t x, int32_t y, int32_t z);
 
-void set_max_rate(uint32_t speed);
 void home(void);
 
 

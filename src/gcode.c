@@ -46,24 +46,27 @@ void gcode_to_motion(size_t index)
 
   int32_t new_x = gcode_x;
   int32_t new_y = gcode_y;
+  int32_t new_z = gcode_z;
 
+  // TODO: use ternary op
   if (line->set[GCODE_X]) {
     new_x = line->value[GCODE_X];
   }
-
   if (line->set[GCODE_Y]) {
     new_y = line->value[GCODE_Y];
   }
+  if (line->set[GCODE_Z]) {
+    new_y = line->value[GCODE_Y];
+  }
 
-  // Z?
   if (line->set[GCODE_F]) {
     gcode_feed_rate = line->value[GCODE_F];
   }
 
   if( gcode_motion_mode == 1 ) {
-    next_motion = new_motion(new_x - gcode_x, new_y - gcode_y, gcode_feed_rate, index);
+    next_motion = new_linear_motion(new_x - gcode_x, new_y - gcode_y, new_z - gcode_z, gcode_feed_rate, index);
   } else {
-    next_motion = new_motion(new_x - gcode_x, new_y - gcode_y, max_rate, index);
+    next_motion = new_linear_motion(new_x - gcode_x, new_y - gcode_y, new_z - gcode_z, rapid_rate, index);
   }
   gcode_x = new_x;
   gcode_y = new_y;

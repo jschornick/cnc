@@ -17,7 +17,8 @@
 
 Input_State_t input_state;
 Menu_State_t menu_state;
-uint32_t input_value;
+int32_t input_value;
+int8_t input_sign;
 
 uint32_t code_step = 0;
 uint32_t code[][3] = { {-200, 200, 0},
@@ -56,11 +57,18 @@ void update_microstep_cb(void *arg) {
 }
 
 void rapid_motion_cb(void *arg) {
-  rapid(tmc, *((uint32_t *) arg));
+  rapid(tmc, *((int32_t *) arg));
 }
 
-void set_max_rate_cb(void *arg) {
-  set_max_rate( *(uint32_t *) arg);
+void set_rapid_rate_cb(void *arg) {
+  uint32_t rate = *((uint32_t *) arg);
+  if (rate <= MAX_RATE) {
+    rapid_rate = rate;
+  } else {
+    uart_queue_str("ERR: Rate limit is ");
+    uart_queue_dec(MAX_RATE);
+    uart_queue_str("!\r\n");
+  }
 }
 
 void display_config(uint8_t tmc)
@@ -231,7 +239,13 @@ void display_main_menu(uint8_t mode) {
   }
 
   uart_queue_str("Main [");
-  uart_queue_hex(tmc, 4);
+  if(tmc == X_AXIS) {
+    uart_queue('X');
+  } else if(tmc == Y_AXIS) {
+    uart_queue('Y');
+  } else {
+    uart_queue('Z');
+  }
   uart_queue_str("] > ");
 }
 
@@ -249,6 +263,7 @@ void display_config_menu(uint8_t mode) {
 void config_menu(char c)
 {
   uint8_t show_menu = 1;
+  input_value = 0;
   switch(c) {
     case '0':
       tmc = 0;
@@ -267,7 +282,6 @@ void config_menu(char c)
       uart_queue_str("Current limit is: 0x");
       uart_queue_hex(tmc_get_current_scale(tmc), 5);
       uart_queue_str("\r\nNew limit (0x00 - 0x1f)? ");
-      input_value = 0;
       input_state = INPUT_HEX;
       input_callback = update_current_scale_cb;
       show_menu = 0;
@@ -277,7 +291,6 @@ void config_menu(char c)
       uart_queue_str("Current step resolution: 0x");
       uart_queue_hex(tmc_get_microstep(tmc), 4);
       uart_queue_str("\r\nNew resolution (0x0 - 0x8)? ");
-      input_value = 0;
       input_state = INPUT_HEX;
       input_callback = update_microstep_cb;
       show_menu = 0;
@@ -319,6 +332,11 @@ void display_motion_menu(uint8_t mode) {
   } else {
     uart_queue('Z');
   }
+  if( tmc_get_dir(tmc) == TMC_FWD ) {
+    uart_queue('+');
+  } else {
+    uart_queue('-');
+  }
   uart_queue_str("] (");
   uart_queue_sdec(pos[X_AXIS]);
   uart_queue_str(", ");
@@ -331,6 +349,8 @@ void display_motion_menu(uint8_t mode) {
 void motion_menu(char c)
 {
   uint8_t show_menu = 1;
+  input_value = 0;
+  input_sign = 1;
   switch(c) {
     case 's':
       uart_queue_str("Step ");
@@ -372,19 +392,17 @@ void motion_menu(char c)
     case 'r':
       uart_queue_str("Rapid move\r\n");
       uart_queue_str("Number of steps ? ");
-      input_value = 0;
       input_state = INPUT_DEC;
       input_callback = rapid_motion_cb;
       show_menu = 0;
       break;
     case 'R':
-      uart_queue_str("Set max rate\r\n");
-      uart_queue_str("Max is ");
-      uart_queue_dec(max_rate);
+      uart_queue_str("Set rapid rate\r\n");
+      uart_queue_str("Rapid is ");
+      uart_queue_dec(rapid_rate);
       uart_queue_str(" (steps/s). New rate? ");
-      input_value = 0;
       input_state = INPUT_DEC;
-      input_callback = set_max_rate_cb;
+      input_callback = set_rapid_rate_cb;
       show_menu = 0;
       break;
     case 'h':
@@ -409,7 +427,7 @@ void motion_menu(char c)
     case 't':
       uart_queue_str("New test motion\r\n");
       if (!next_motion) {
-        next_motion = new_motion(42, 23, max_rate, 99);
+        next_motion = new_linear_motion(100, 100, 100, rapid_rate, 99);
         motion_start();
       } else {
         uart_queue_str("Motion queue full!\r\n");
@@ -468,17 +486,17 @@ void main_menu(char c)
   uint8_t show_menu = 1;
 
   switch(c) {
-  case '0':
-    tmc = 0;
-    uart_queue_str("Stepper 0 selected.\r\n");
+  case 'x':
+    tmc = X_AXIS;
+    uart_queue_str("X-axis selected.\r\n");
     break;
-  case '1':
-    tmc = 1;
-    uart_queue_str("Stepper 1 selected.\r\n");
+  case 'y':
+    tmc = Y_AXIS;
+    uart_queue_str("Y-axis selected.\r\n");
     break;
-  case '2':
-    tmc = 2;
-    uart_queue_str("Stepper 2 selected.\r\n");
+  case 'z':
+    tmc = Z_AXIS;
+    uart_queue_str("Z-axis selected.\r\n");
     break;
 
   case 'r':
@@ -591,9 +609,15 @@ void process_input(char c)
         break;
       case '\r':
         uart_queue_str("\r\n");
+        input_value *= input_sign;
         input_callback( (void *) &input_value);
         input_state = INPUT_MENU;
         break;
+      case '-':
+        if (!input_value) {
+          uart_queue('-');
+          input_sign = -1;
+        }
       default:
         read_dec(c);
         break;

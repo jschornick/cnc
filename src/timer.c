@@ -77,6 +77,7 @@ void TA1_0_IRQHandler(void)
       uart_queue_str(" started!\r\n");
       tmc_set_dir(X_AXIS, motion->dirs[X_AXIS]);
       tmc_set_dir(Y_AXIS, motion->dirs[Y_AXIS]);
+      tmc_set_dir(Z_AXIS, motion->dirs[Z_AXIS]);
     }
 
     if(motion_tick < motion->count) {
