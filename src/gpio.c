@@ -19,12 +19,6 @@ void gpio_set(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t v
   }
 }
 
-void gpio_toggle(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
-{
-  port->OUT ^= pin_bits;
-}
-
-
 void gpio_set_input(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits)
 {
   port->DIR &= ~pin_bits;

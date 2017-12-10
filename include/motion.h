@@ -24,7 +24,17 @@ extern uint32_t rapid_rate;
 
 typedef struct {
   uint16_t timer_ticks;
-  uint8_t axes[3];
+  union {
+    struct {
+      uint8_t x : 1;
+      uint8_t x_flip : 1;
+      uint8_t y : 1;
+      uint8_t y_flip : 1;
+      uint8_t z : 1;
+      uint8_t z_flip : 1;
+    };
+    uint8_t step_data;
+  };
 } step_timing_t;
 
 
@@ -46,11 +56,9 @@ extern uint32_t motion_enabled;
 
 void rapid(uint8_t tmc, int32_t steps);
 
-void linear_interpolate(int32_t *start_pos, int32_t *end_pos, uint16_t rate, motion_t *motion);
-void rapid_interpolate(int32_t *start_pos, int32_t *end_pos, motion_t *motion);
-
 motion_t *new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint16_t id);
 motion_t *new_rapid_motion(int32_t x, int32_t y, int32_t z, uint16_t id);
+motion_t *new_arc_motion(int32_t x, int32_t y, int32_t x_off, int32_t y_off, uint8_t rotation, uint16_t speed, uint16_t id);
 
 void free_motion(motion_t *);
 void motion_start(void);

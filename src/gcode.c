@@ -68,6 +68,12 @@ void gcode_to_motion(size_t index)
       case GCODE_LINEAR:
         gcode_motion_mode = GCODE_LINEAR;
         break;
+      case GCODE_CW:
+        gcode_motion_mode = GCODE_CW;
+        break;
+      case GCODE_CCW:
+        gcode_motion_mode = GCODE_CCW;
+        break;
       case GCODE_ABSOLUTE:
         gcode_coord_mode = GCODE_ABSOLUTE;
         break;
@@ -82,6 +88,8 @@ void gcode_to_motion(size_t index)
   int32_t dy;
   int32_t dz;
 
+  int32_t i,j;
+
   if (gcode_coord_mode == GCODE_RELATIVE) {
     dx = (GCODE_IS_SET(line,'X')) ? line->value[GCODE('X')] : 0;
     dy = (GCODE_IS_SET(line,'Y')) ? line->value[GCODE('Y')] : 0;
@@ -95,13 +103,25 @@ void gcode_to_motion(size_t index)
   gcode_y += dy;
   gcode_z += dz;
 
+  i = (GCODE_IS_SET(line,'I')) ? line->value[GCODE('I')] : 0;
+  j = (GCODE_IS_SET(line,'J')) ? line->value[GCODE('J')] : 0;
+
   gcode_feed_rate = (GCODE_IS_SET(line,'F')) ? line->value[GCODE('F')] : gcode_feed_rate;
 
   if ( dx || dy || dz ) {
-    if( gcode_motion_mode == 1 ) {
-      next_motion = new_linear_motion(dx, dy, dz, gcode_feed_rate, id);
-    } else {
-      next_motion = new_rapid_motion(dx, dy, dz, id);
+    switch(gcode_motion_mode) {
+      case GCODE_LINEAR:
+        next_motion = new_linear_motion(dx, dy, dz, gcode_feed_rate, id);
+        break;
+      case GCODE_RAPID:
+        next_motion = new_rapid_motion(dx, dy, dz, id);
+        break;
+      case GCODE_CW:
+        next_motion = new_arc_motion(dx, dy, i, j, GCODE_CW, gcode_feed_rate, id);
+        break;
+      case GCODE_CCW:
+        next_motion = new_arc_motion(dx, dy, i, j, GCODE_CCW, gcode_feed_rate, id);
+        break;
     }
   }
 }

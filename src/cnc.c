@@ -67,9 +67,18 @@ int main(void) {
   tmc_init();
   uart_queue_str("done!\r\n");
 
-
   /* motion = new_linear_motion(50, 50, 0, 100, 100); */
-  /* next_motion = new_linear_motion(-50, 50, 0, 50, 101); */
+
+  // simplest arc, center is directly to left
+  /* int32_t start[] = {0,0,0}; */
+  /* int32_t end[] = {100,-100}; */
+  /* int32_t x_off = -100; */
+  /* int32_t y_off = 0; */
+
+  /* motion_t *new_motion = malloc( sizeof(motion_t) ); */
+  /* arc_interpolate( start, end, x_off, y_off, 100, new_motion); */
+  /* motion = new_motion; */
+
 
   char new_char;
   input_state = INPUT_MENU;

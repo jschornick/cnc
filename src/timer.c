@@ -90,12 +90,30 @@ void TA1_0_IRQHandler(void)
       /* uart_queue_hex((uint32_t) motion->steps[motion_tick].axes[Z_AXIS],4); */
       /* uart_queue_str("\r\n"); */
 
-      for (uint8_t axis=0; axis<3; axis++) {
-        if (motion->steps[motion_tick].axes[axis]) {
-          gpio_toggle(tmc_pins[axis].step_port, tmc_pins[axis].step_pin);
-          pos[axis] += (tmc_get_dir(axis) == TMC_FWD) ? 1 : -1;
-        }
+      if (motion->steps[motion_tick].x) {
+        gpio_toggle(tmc_pins[X_AXIS].step_port, tmc_pins[X_AXIS].step_pin);
+        pos[X_AXIS] += (tmc_get_dir(X_AXIS) == TMC_FWD) ? 1 : -1;
       }
+      if (motion->steps[motion_tick].y) {
+        gpio_toggle(tmc_pins[Y_AXIS].step_port, tmc_pins[Y_AXIS].step_pin);
+        pos[Y_AXIS] += (tmc_get_dir(Y_AXIS) == TMC_FWD) ? 1 : -1;
+      }
+      if (motion->steps[motion_tick].z) {
+        gpio_toggle(tmc_pins[Z_AXIS].step_port, tmc_pins[Z_AXIS].step_pin);
+        pos[Z_AXIS] += (tmc_get_dir(Z_AXIS) == TMC_FWD) ? 1 : -1;
+      }
+
+      if (motion->steps[motion_tick].x_flip) {
+        gpio_toggle(tmc_pins[X_AXIS].dir_port, tmc_pins[X_AXIS].dir_pin);
+      }
+      if (motion->steps[motion_tick].y_flip) {
+        gpio_toggle(tmc_pins[Y_AXIS].dir_port, tmc_pins[Y_AXIS].dir_pin);
+      }
+      if (motion->steps[motion_tick].z_flip) {
+        gpio_toggle(tmc_pins[Z_AXIS].dir_port, tmc_pins[Z_AXIS].dir_pin);
+      }
+
+
       motion_tick++;
       if(motion_enabled) {
         TIMER_A1->CCTL[0] |= TIMER_A_CCTLN_CCIE;

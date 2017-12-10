@@ -25,6 +25,9 @@ extern uint8_t gcode_enabled;
 #define GCODE_ABSOLUTE 90
 #define GCODE_RELATIVE 91
 
+#define GCODE_CW 2
+#define GCODE_CCW 3
+
 // TODO: Storing the parsed G-code this way wastes memory and doesn't allow
 // multiple codes of the same letter (e.g. G01 G90 on one line)
 typedef struct {
