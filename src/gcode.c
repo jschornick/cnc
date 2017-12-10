@@ -19,20 +19,64 @@ uint16_t gcode_cmd_count;
 
 uint8_t gcode_enabled = 0;  // does queued g-code get run?
 
+uint8_t gcode_motion_mode = 0;
+uint8_t gcode_coord_mode = 90;  // 90 absolute, 91 relative
+
+// static gcode state variables
+uint16_t gcode_feed_rate = 0;
+uint32_t gcode_x = 0;
+uint32_t gcode_y = 0 ;
+uint32_t gcode_z = 0;
+
 gcode_line_t gcode_cmd_queue[GCODE_CMD_QUEUE_SIZE];
 
 void gcode_to_motion(size_t index)
 {
+  gcode_line_t *line = &gcode_cmd_queue[index];
   uart_queue_str("Running G-code:\r\n");
   print_gcode_line(index);
+
+  if( line->set[GCODE_G] ) {
+    if (line->value[GCODE_G] == 1) {
+      gcode_motion_mode = 1;  // interpolate
+    } else {
+      gcode_motion_mode = 0;  // rapid
+    }
+  } // else keep existing motion mode
+
+  int32_t new_x = gcode_x;
+  int32_t new_y = gcode_y;
+
+  if (line->set[GCODE_X]) {
+    new_x = line->value[GCODE_X];
+  }
+
+  if (line->set[GCODE_Y]) {
+    new_y = line->value[GCODE_Y];
+  }
+
+  // Z?
+  if (line->set[GCODE_F]) {
+    gcode_feed_rate = line->value[GCODE_F];
+  }
+
+  if( gcode_motion_mode == 1 ) {
+    next_motion = new_motion(new_x - gcode_x, new_y - gcode_y, gcode_feed_rate, index);
+  } else {
+    next_motion = new_motion(new_x - gcode_x, new_y - gcode_y, max_rate, index);
+  }
+  gcode_x = new_x;
+  gcode_y = new_y;
+
+  motion_start();
 }
 
 void run_gcode(void)
 {
   if (gcode_cmd_count) {
-    uart_queue_str("G-code lines queued: ");
-    uart_queue_dec(gcode_cmd_count);
-    uart_queue_str("\r\n");
+    /* uart_queue_str("G-code lines queued: "); */
+    /* uart_queue_dec(gcode_cmd_count); */
+    /* uart_queue_str("\r\n"); */
     if (!next_motion) {
 
       gcode_to_motion(gcode_cmd_tail);
@@ -43,7 +87,7 @@ void run_gcode(void)
       }
 
     } else {
-      uart_queue_str("...but motion queue full!\r\n");
+      /* uart_queue_str("...but motion queue full!\r\n"); */
     }
   }
 }

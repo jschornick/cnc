@@ -526,7 +526,7 @@ void main_menu(char c)
     break;
   case 'G':
     if (gcode_enabled) {
-      uart_queue_str("G-code diabled!\r\n");
+      uart_queue_str("G-code disabled!\r\n");
       gcode_enabled = 0;
     } else {
       uart_queue_str("G-code enabled!\r\n");
