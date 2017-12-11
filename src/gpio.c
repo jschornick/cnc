@@ -40,6 +40,10 @@ void gpio_set_pullup(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, ui
   port->REN |= pin_bits;
 }
 
+void gpio_disable_interrupt(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits) {
+  port->IE &= ~pin_bits;
+}
+
 void gpio_set_interrupt(DIO_PORT_Odd_Interruptable_Type *port, uint8_t pin_bits, uint8_t edge)
 {
   if(edge == GPIO_FALLING) {

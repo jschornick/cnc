@@ -101,6 +101,15 @@ int main(void) {
       B2_flag=0;
     }
 
+    if(B3_flag) {
+      uart_queue_str("\r\nZ-axis limit sensor! Stopping motion!\r\n");
+      motion_stop();
+      motion = 0;
+      disable_limit_switch();
+      rapid(Z_AXIS, 700); // retract tool
+      B3_flag=0;
+    }
+
     // Pop received characters off the FIFO and process them
     while(rx_fifo.count) {
       fifo_pop(&rx_fifo, &new_char);

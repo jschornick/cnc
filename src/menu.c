@@ -11,6 +11,7 @@
 #include "tmc.h"
 #include "motion.h"
 #include "gcode.h"
+#include "buttons.h"
 #include "menu.h"
 
 // The selected stepper controller
@@ -401,15 +402,6 @@ void motion_menu(char c)
       pos[Y_AXIS] = 0;
       pos[Z_AXIS] = 0;
       break;
-    case 'c':
-      uart_queue_str("Execute code\r\n");
-      uart_queue_str("Step # ");
-      uart_queue_dec(code_step);
-      uart_queue_str("\r\n");
-      goto_pos(code[code_step][0], code[code_step][1], code[code_step][2]);
-      code_step++;
-      code_step %= 6;
-      break;
     case 't':
       uart_queue_str("New test motion\r\n");
       if (!next_motion) {
@@ -562,6 +554,9 @@ void main_menu(char c)
       uart_queue_str("Run G-code queue\r\n");
       gcode_enabled = 1;
     }
+  case 'l':
+    uart_queue_str("Enable limit switch\r\n");
+    enable_limit_switch();
     break;
   case '?':
     show_menu = 2;

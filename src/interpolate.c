@@ -5,8 +5,12 @@
 //
 // Compilation: GCC cross compiler for ARM, v4.9.3+
 // Version    : See GitHub repository jschornick/cnc for revision details
+//
+// Attribution: Rasterized circle algorithm: https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+
 
 #include <stdlib.h>  // malloc
+#include <string.h>  // memset
 #include <math.h>  // sqrtl
 #include "uart.h"
 #include "tmc.h"
@@ -199,11 +203,11 @@ void linear_interpolate(int32_t *start_pos, int32_t *end_pos, uint16_t rate, mot
 
 
 //
-void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_t y_off, uint8_t rot, uint16_t rate, motion_t *motion)
+void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_t y_off, int8_t rot, uint16_t rate, motion_t *motion)
 {
 
-  /* int32_t dx = end_pos[X_AXIS] - start_pos[X_AXIS]; */
-  /* int32_t dy = end_pos[Y_AXIS] - start_pos[Y_AXIS]; */
+  int32_t dx = end_pos[X_AXIS] - start_pos[X_AXIS];
+  int32_t dy = end_pos[Y_AXIS] - start_pos[Y_AXIS];
 
   int32_t r = sqrtl(x_off*x_off + y_off*y_off);
 
@@ -211,40 +215,91 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
   int32_t y0 = y_off;
 
   uart_queue_str("\r\nArc interpolate:");
-  /* uart_queue_str("\r\n  step/s = "); */
-  /* uart_queue_dec(rate); */
-  /* uart_queue_str("\r\n"); */
-  /* uart_queue_str("  (dx, dy) = ("); */
-  /* uart_queue_sdec(dx); */
-  /* uart_queue_str(", "); */
-  /* uart_queue_sdec(dy); */
-  /* uart_queue_str(")\r\n"); */
+  uart_queue_str("\r\n  step/s = ");
+  uart_queue_dec(rate);
+  uart_queue_str("\r\n");
+  uart_queue_str("  (dx, dy) = (");
+  uart_queue_sdec(dx);
+  uart_queue_str(", ");
+  uart_queue_sdec(dy);
+  uart_queue_str(")\r\n");
 
   uart_queue_str("  (x0, y0) = (");
   uart_queue_sdec(x0);
   uart_queue_str(", ");
   uart_queue_sdec(y0);
   uart_queue_str(")\r\n");
+  uart_queue_str("  rot = ");
+  uart_queue_sdec(rot);
 
   uart_queue_str("  r = ");
   uart_queue_dec(r);
   uart_queue_str("\r\n");
 
-  /* int32_t dx = end_pos[X_AXIS] - start_pos[X_AXIS]; */
-  /* int32_t dy = end_pos[Y_AXIS] - start_pos[Y_AXIS]; */
 
   // counter clockwise arc with x_off<0, y_off=0
   //    arc goes up and left
-  motion->dirs[X_AXIS] = TMC_REV;
-  motion->dirs[Y_AXIS] = TMC_FWD;
+
+  int8_t start_oct, end_oct;
+
+  int32_t end_x_off = x_off - dx;
+  int32_t end_y_off = y_off - dy;
+
+  if (x_off < 0) {
+    if (y_off < 0) {
+      start_oct = (abs(x_off) < abs(y_off)) ? 1 : 0;
+    } else {
+      start_oct = (abs(x_off) < abs(y_off)) ? 6 : 7;
+    }
+  } else {
+    if (y_off < 0) {
+      start_oct = (abs(x_off) < abs(y_off)) ? 2 : 3;
+    } else {
+      start_oct = (abs(x_off) < abs(y_off)) ? 5 : 4;
+    }
+  }
+
+  if (end_x_off < 0) {
+    if (end_y_off < 0) {
+      end_oct = (abs(end_x_off) < abs(end_y_off)) ? 1 : 0;
+    } else {
+      end_oct = (abs(end_x_off) < abs(end_y_off)) ? 6 : 7;
+    }
+  } else {
+    if (end_y_off < 0) {
+      end_oct = (abs(end_x_off) < abs(end_y_off)) ? 2 : 3;
+    } else {
+      end_oct = (abs(end_x_off) < abs(end_y_off)) ? 5 : 4;
+    }
+  }
+  uint8_t octants = ( (rot == 1)
+                      ? (8 + end_oct - start_oct) % 8 + 1
+                      : (8 + start_oct - end_oct) % 8 + 1 );
+
+  uart_queue_str("\r\n  S_oct: ");
+  uart_queue_sdec(start_oct);
+  uart_queue_str("\r\n  E_oct: ");
+  uart_queue_sdec(end_oct);
+  uart_queue_str("\r\n  Octs = ");
+  uart_queue_dec(octants);
+  uart_queue_str("\r\n");
+
+  int8_t oct2maj_axis[] = {'Y', 'X', 'X', 'Y', 'Y', 'X', 'X', 'Y'};
+  int8_t oct2min_axis[] = {'X', 'Y', 'Y', 'X', 'X', 'Y', 'Y', 'X'};
+
+  // G2 (CW)
+  /* int8_t oct2maj_pol[] = {-1, 1, 1, 1, 1, -1, -1, -1}; */
+  /* int8_t oct2min_pol[] = {1, -1, 1, 1, -1, 1, -1, -1}; */
+
+  // G3 (CCW)
+  int8_t oct2maj_pol[] = {1, -1, -1, -1, -1, 1, 1, 1};
+  int8_t oct2min_pol[] = {-1, 1, -1, -1, 1, -1, 1, 1};
 
   // TODO: this should either vary during motion, or at least be based on arc length
   uint32_t step_ticks = (2000000 / rate) / 61;
 
   //motion->steps = malloc( sizeof(step_timing_t) * (abs(dx)+abs(dy)) );  // worst case
   motion->steps = malloc( sizeof(step_timing_t) * 8*r );
-
-  #include <string.h>
   memset(motion->steps, 0, sizeof(step_timing_t) * 8*r);
 
   step_timing_t *steps = motion->steps;
@@ -253,27 +308,57 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
 
   uart_flush();
 
-  char maj_axis = 'Y'; // axis that changes every
-  int8_t maj_pol = 1;
-  int8_t min_pol = -1;
-  int8_t min_stepped;
+  char maj_axis = oct2maj_axis[start_oct];   // axis with a larger delta across the octant
+  char min_axis;
+  int8_t maj_pol = rot * oct2maj_pol[start_oct];  // CCW --> increasing octants
+  int8_t min_pol = rot * oct2min_pol[start_oct];
+  /* char maj_axis = 'Y'; // axis that changes every */
+  /* int8_t maj_pol = 1; */
+  /* int8_t min_pol = -1; */
 
-  for( uint8_t octant = 0; octant<8; octant++ ) {
+  // starting direction for motion based on octant and rotation direction
+  if (maj_axis == 'X') {
+    motion->dirs[X_AXIS] = (maj_pol == 1) ? TMC_FWD : TMC_REV;
+    motion->dirs[Y_AXIS] = (min_pol == 1) ? TMC_FWD : TMC_REV;
+  } else {
+    motion->dirs[Y_AXIS] = (maj_pol == 1) ? TMC_FWD : TMC_REV;
+    motion->dirs[X_AXIS] = (min_pol == 1) ? TMC_FWD : TMC_REV;
+  }
 
-    int32_t maj_steps = 0;
-    int32_t min_steps = 0;
-    int32_t maj_err = 1;
-    int32_t min_err = 1;
+
+  //for( uint8_t octant = 0; octant<8; octant++ ) {
+  for( uint8_t oct_i = 0; oct_i < octants; oct_i++) {
+    uint8_t octant = (8+start_oct + (rot*oct_i)) % 8;
+
+    maj_axis = oct2maj_axis[octant];
+    min_axis = oct2min_axis[octant];
+    maj_pol = rot * oct2maj_pol[octant];
+    min_pol = rot * oct2min_pol[octant];
+
+    int32_t min_pos = r - 1;
+    int32_t maj_pos = 0;
+    int32_t maj_err_mod = 1;
+    int32_t min_err_mod = 1;
     int32_t err = 1 - (2*r);
+    int8_t do_min_step;
 
-    uart_queue_str("Octant: "); uart_queue_dec(octant); uart_queue_str("\r\n"); uart_queue_str("Maj: "); uart_queue(maj_axis); uart_queue_str("\r\n");
+    uart_queue_str("Octant: "); uart_queue_dec(octant); uart_queue_str(" Maj: "); uart_queue(maj_axis);
+    uart_queue_str(" Pols: "); uart_queue_sdec(maj_pol); uart_queue_str(", "); uart_queue_sdec(min_pol); uart_queue_str("\r\n");
 
     // r- minor >= major
-    while (r > maj_steps + min_steps) {
+    while (min_pos >= maj_pos) {
       steps[i].timer_ticks = step_ticks;
 
       /* uart_queue_dec(i); uart_queue_str(": ("); uart_queue_dec(maj_steps); uart_queue_str(", "); uart_queue_dec(min_steps); uart_queue_str(") "); */
+      uart_queue_str("Pt: ");
+      if (maj_axis == 'X') {
+        uart_queue_sdec(maj_pos); uart_queue_str(", "); uart_queue_sdec(min_pos);
+      } else {
+        uart_queue_sdec(min_pos); uart_queue_str(", "); uart_queue_sdec(maj_pos);
+      }
+      uart_queue_str("\r\n");
 
+      // determine if we should step the major (fast changing) axis
       if (err <= 0) {
         /* uart_queue_sdec(maj_pol); */
         if (maj_axis == 'X') {
@@ -283,24 +368,26 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
           steps[i].y = 1;
           /* uart_queue_str("Y "); */
         }
-        maj_steps++;
-        err += maj_err;
-        maj_err +=2;
+
+        maj_pos++;
+        err += maj_err_mod;
+        maj_err_mod +=2;
       }
 
-      min_stepped = 0;
+      // determine if we should step the minor access
+      do_min_step = 0;
       if (err > 0) {
-        min_stepped = 1;
-        min_steps++;
-        min_err += 2;
-        err += min_err - (2*r);
+        do_min_step = 1;
+        min_pos--;
+        min_err_mod += 2;
+        err += min_err_mod - (2*r);
       }
 
-      // minor axis
-      if (octant%2 == 0) {
-        if (min_stepped) {
+      // adjacent quadrants have mirrored minor axis step rates
+      if ( (octant % 2) == (rot == -1)) { // normal behavior
+        if (do_min_step) {
           /* uart_queue_sdec(min_pol); */
-          if (maj_axis == 'X') {
+          if (min_axis == 'Y') {
             steps[i].y = 1;
             /* uart_queue_str("Y"); */
           } else {
@@ -308,10 +395,10 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
             /* uart_queue_str("X"); */
           }
         }
-      } else {
-        if (!min_stepped) {
+      } else { // mirrored behavior
+        if (!do_min_step) {
           /* uart_queue_sdec(min_pol); */
-          if (maj_axis == 'X') {
+          if (min_axis == 'Y') {
             steps[i].y = 1;
             /* uart_queue_str("Y"); */
           } else {
@@ -329,33 +416,25 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
       i++;
       /* uart_flush(); */
     }
-    uart_queue_str("---\r\n");
+    /* uart_queue_str("---\r\n"); */
 
-    if ( (octant%2) == 0 ) {
-      // beginning of odd octant
-      maj_axis = (maj_axis == 'X') ? 'Y' : 'X';
-      int8_t tmp = maj_pol;
-      maj_pol = min_pol;
-      min_pol = tmp;
-    } else {
-      // beginning of nonzero even octant
-      min_pol *= -1;
-      // flip minor axis polarity
-      if (maj_axis == 'X') {
-        steps[i].y_flip = 1;
-        uart_queue_str("Y-flip: [");
-        uart_queue_hex(steps[i].step_data,6);
-        uart_queue_str("]\r\n");
-      } else {
+    // axis polarity only changes when it is the minor axis
+    // if there's a change coming, flip axis direction
+
+    // polarity of minor access flips when
+    //     CW  (-1)  goes even -> odd
+    //     CCW (+1)  goes odd -> even
+    if( ((octant%2 == 0) && (rot == -1)) ||
+        ((octant%2 == 1) && (rot == 1)) ) {
+      if (min_axis == 'X') {
         steps[i].x_flip = 1;
-        uart_queue_str("X-flip: [");
-        uart_queue_hex(steps[i].step_data,6);
-        uart_queue_str("]\r\n");
+      } else {
+        steps[i].y_flip = 1;
       }
     }
 
-
   }
+
   motion->count = i;
 
   int32_t x = start_pos[X_AXIS];
@@ -367,9 +446,9 @@ void arc_interpolate(int32_t *start_pos, int32_t *end_pos, int32_t x_off, int32_
   uart_queue_str("\r\n----\r\n");
   for( i = 0; i < motion->count; i++ ) {
     uart_queue_dec(i);
-    uart_queue_str(": [");
-    uart_queue_hex(steps[i].step_data,6);
-    uart_queue_str("] ");
+    /* uart_queue_str(": ["); */
+    /* uart_queue_hex(steps[i].step_data,6); */
+    /* uart_queue_str("] "); */
     /* uart_queue_str("tk = "); */
     /* uart_queue_dec(motion->steps[i].timer_ticks); */
 

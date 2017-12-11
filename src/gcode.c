@@ -117,10 +117,10 @@ void gcode_to_motion(size_t index)
         next_motion = new_rapid_motion(dx, dy, dz, id);
         break;
       case GCODE_CW:
-        next_motion = new_arc_motion(dx, dy, i, j, GCODE_CW, gcode_feed_rate, id);
+        next_motion = new_arc_motion(dx, dy, i, j, -1, gcode_feed_rate, id);
         break;
       case GCODE_CCW:
-        next_motion = new_arc_motion(dx, dy, i, j, GCODE_CCW, gcode_feed_rate, id);
+        next_motion = new_arc_motion(dx, dy, i, j, +1, gcode_feed_rate, id);
         break;
     }
   }

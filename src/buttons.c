@@ -9,10 +9,12 @@
 #include "msp432p401r.h"
 #include "gpio.h"
 #include "buttons.h"
+#include "uart.h"
 
 // Button flags that may be set during GPIO interrupt
 volatile uint8_t B1_flag;
 volatile uint8_t B2_flag;
+volatile uint8_t B3_flag;
 
 // Function: button_init
 //
@@ -22,17 +24,32 @@ void button_init(void)
 {
   gpio_set_input(BUTTON1);
   gpio_set_input(BUTTON2);
+  gpio_set_input(BUTTON3);
 
   gpio_set_pullup(BUTTON1, GPIO_PULL_UP);
   gpio_set_pullup(BUTTON2, GPIO_PULL_UP);
+  gpio_set_pullup(BUTTON3, GPIO_PULL_UP);
 
   gpio_set_interrupt(BUTTON1, GPIO_FALLING);
   gpio_set_interrupt(BUTTON2, GPIO_FALLING);
+  gpio_set_interrupt(BUTTON3, GPIO_FALLING);
 
   B1_flag = 0;
   B2_flag = 0;
+  B3_flag = 0;
 
   __NVIC_EnableIRQ(PORT1_IRQn);
+  __NVIC_EnableIRQ(PORT3_IRQn);
+}
+
+void enable_limit_switch(void) {
+  gpio_set_interrupt(BUTTON3, GPIO_FALLING);
+}
+
+void disable_limit_switch(void)
+{
+  gpio_disable_interrupt(BUTTON3);
+  uart_queue_str("Limiter disabled!\r\n");
 }
 
 // Interrupt handler for Port 1 (buttons)
@@ -51,3 +68,10 @@ void PORT1_IRQHandler(void)
   }
 }
 
+void PORT3_IRQHandler(void)
+{
+  if (P3->IFG & BIT0) {
+    P3->IFG &= ~BIT0; // clear interrupt flag
+    B3_flag = 1;
+  }
+}

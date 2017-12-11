@@ -12,7 +12,7 @@
 #ifndef __UART_H
 #define __UART_H
 
-#define UART_FIFO_SIZE 2000
+#define UART_FIFO_SIZE 2500
 
 #define NIBBLE_TO_ASCII(x) ( (x)<10 ? (x)+'0' : (x)+'A'-10 )
 

@@ -17,9 +17,16 @@
 #define BUTTON2_PIN  PIN4
 #define BUTTON2 BUTTON2_PORT, BUTTON2_PIN
 
+#define BUTTON3_PORT P3
+#define BUTTON3_PIN  PIN0
+#define BUTTON3 BUTTON3_PORT, BUTTON3_PIN
+
 extern volatile uint8_t B1_flag;
 extern volatile uint8_t B2_flag;
+extern volatile uint8_t B3_flag;
 
 void button_init(void);
+void enable_limit_switch(void);
+void disable_limit_switch(void);
 
 #endif /* __BUTTONS_H */

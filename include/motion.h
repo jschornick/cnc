@@ -58,7 +58,7 @@ void rapid(uint8_t tmc, int32_t steps);
 
 motion_t *new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, uint16_t id);
 motion_t *new_rapid_motion(int32_t x, int32_t y, int32_t z, uint16_t id);
-motion_t *new_arc_motion(int32_t x, int32_t y, int32_t x_off, int32_t y_off, uint8_t rotation, uint16_t speed, uint16_t id);
+motion_t *new_arc_motion(int32_t x, int32_t y, int32_t x_off, int32_t y_off, int8_t rotation, uint16_t speed, uint16_t id);
 
 void free_motion(motion_t *);
 void motion_start(void);

@@ -115,7 +115,9 @@ motion_t * new_linear_motion(int32_t x, int32_t y, int32_t z, uint16_t speed, ui
   return motion;
 }
 
-motion_t *new_arc_motion(int32_t x, int32_t y, int32_t x_off, int32_t y_off, uint8_t rotation, uint16_t speed, uint16_t id)
+// CCW : rot == 1 (increasing octants)
+// CW : rot == -1 (decreasing octants)
+motion_t *new_arc_motion(int32_t x, int32_t y, int32_t x_off, int32_t y_off, int8_t rotation, uint16_t speed, uint16_t id)
 {
   int32_t start[3];
   int32_t end[3];
